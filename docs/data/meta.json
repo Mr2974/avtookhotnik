@@ -1,0 +1,23 @@
+{
+ "run_at": "2026-11-19 19:09",
+ "seconds": 519,
+ "requests": 506,
+ "errors": 1,
+ "listings_checked": 17372,
+ "comparables": 31513,
+ "deals": 349,
+ "new_deals": 359,
+ "with_phrases": 24,
+ "dropped_red_flags": {
+  "битая": 7,
+  "цена только при кредите": 7,
+  "лизинг/аренда": 1,
+  "не на ходу": 1,
+  "проблема с мотором": 2
+ },
+ "new_added": 349,
+ "cheaper": 0,
+ "live": 349,
+ "total": 349,
+ "telegram_url": ""
+}

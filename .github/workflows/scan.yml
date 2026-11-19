@@ -1,0 +1,48 @@
+name: Поиск машин ниже рынка
+
+on:
+  schedule:
+    # Каждые 2 часа, примерно 7:13–23:13 по Праге зимой (время GitHub — UTC, запуск может опоздать на 5–20 минут).
+    - cron: "13 6-22/2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TZ: Europe/Prague
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Список уже найденных машин
+        run: |
+          python3 -c "import json,os; p='docs/data/deals.json'; d=json.load(open(p))['deals'] if os.path.exists(p) else []; json.dump([x['id'] for x in d], open('seen.json','w'))"
+
+      - name: Поиск на Sauto.cz и Bazoš.cz
+        run: python3 car_hunter.py --config config.json --out out --seen seen.json
+
+      - name: Обновить сайт и отправить уведомление
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_INVITE: ${{ vars.TELEGRAM_INVITE }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: python3 update_site.py
+
+      - name: Сохранить находки
+        run: |
+          git config user.name "avtookhotnik-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data
+          if git diff --cached --quiet; then echo "Нет изменений"; exit 0; fi
+          git commit -m "Находки $(date '+%Y-%m-%d %H:%M')"
+          git pull --rebase
+          git push

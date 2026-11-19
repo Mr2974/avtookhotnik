@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Ликвидные машины ниже рынка на Sauto.cz и Bazoš.cz">
+<title>Автоохотник CZ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a working feed. Run summary on top, filter bar, then one card per car,
+   price set against its market median like a price tag on a lot. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f6;
+  --fg: #141821;
+  --muted: #5a6273;
+  --line: #dde2ea;
+  --accent: #2443c4;
+  --accent-soft: #e5eaff;
+  --good: #137a43;
+  --good-soft: #def4e7;
+  --warn: #9a6200;
+  --warn-soft: #fbefd6;
+  --bad: #b3261e;
+  --bad-soft: #fbe3e1;
+  --plate: #ffffff;
+  --plate-ink: #111111;
+  --plate-eu: #1d3fae;
+  --shadow: 0 1px 2px rgba(20, 24, 33, .06), 0 4px 16px rgba(20, 24, 33, .05);
+  --f-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --f-body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1117; --surface: #161a22; --surface-2: #1d222c; --fg: #e7eaf0; --muted: #98a1b3;
+    --line: #2a303c; --accent: #8ea4ff; --accent-soft: #232c4d; --good: #5fd391; --good-soft: #17301f;
+    --warn: #f2b65a; --warn-soft: #33270f; --bad: #ff8a80; --bad-soft: #3a1b19;
+    --plate: #e9ebef; --plate-ink: #111111; --plate-eu: #2747b8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1117; --surface: #161a22; --surface-2: #1d222c; --fg: #e7eaf0; --muted: #98a1b3;
+  --line: #2a303c; --accent: #8ea4ff; --accent-soft: #232c4d; --good: #5fd391; --good-soft: #17301f;
+  --warn: #f2b65a; --warn-soft: #33270f; --bad: #ff8a80; --bad-soft: #3a1b19;
+  --plate: #e9ebef; --plate-ink: #111111; --plate-eu: #2747b8;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+.tg { display: inline-flex; margin-top: 10px; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 18px; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(22px, 4vw, 30px); letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 4px 0 0; max-width: 68ch; }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+
+.run { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.run div { background: var(--surface); padding: 12px 14px; display: grid; gap: 2px; min-width: 0; }
+.run .k { font-size: 12px; color: var(--muted); letter-spacing: .02em; }
+.run .v { font-family: var(--f-data); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.run .v.accent { color: var(--accent); }
+
+.bar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 10px; }
+.tab { border: 0; background: transparent; color: var(--muted); font: 500 14px var(--f-body); padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+.tab[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+.tab .c { font-family: var(--f-data); font-size: 12px; margin-left: 4px; color: var(--muted); }
+select, .chk { font: 14px var(--f-body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.chk { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.chk input { accent-color: var(--accent); margin: 0; }
+button:focus-visible, select:focus-visible, a:focus-visible, .chk:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.list { display: grid; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 14px 20px; }
+.card.is-new { border-color: var(--accent); }
+.head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.plate { display: inline-flex; align-items: stretch; border: 1.5px solid var(--plate-ink); border-radius: 4px; overflow: hidden; background: var(--plate); color: var(--plate-ink); font: 600 13px var(--f-data); line-height: 1; }
+.plate .eu { background: var(--plate-eu); color: #fff; font-size: 9px; padding: 4px 4px 2px; display: grid; place-items: end center; }
+.plate .t { padding: 4px 7px; letter-spacing: .06em; display: grid; place-items: center; }
+.title { font-weight: 600; font-size: 16px; margin: 6px 0 2px; overflow-wrap: anywhere; }
+.title a { color: inherit; text-decoration: none; }
+.title a:hover { text-decoration: underline; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: 13.5px; }
+.facts b { color: var(--fg); font-weight: 600; font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); max-width: 100%; overflow-wrap: anywhere; }
+.chip.hot { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.good { background: var(--good-soft); color: var(--good); }
+.chip.src { background: transparent; border: 1px solid var(--line); }
+.vin { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 10px; font-size: 13px; }
+.vin-k { font-size: 11px; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.vin code { font: 600 13px var(--f-data); letter-spacing: .04em; background: var(--surface-2); padding: 3px 7px; border-radius: 6px; overflow-wrap: anywhere; }
+.vin-none { color: var(--muted); }
+.btn.small { padding: 4px 9px; font-size: 12.5px; }
+.desc { margin-top: 8px; color: var(--muted); font-size: 13.5px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.desc.open { -webkit-line-clamp: unset; }
+.more { border: 0; background: none; color: var(--accent); font: 500 13px var(--f-body); padding: 0; cursor: pointer; }
+
+.tag { display: grid; gap: 6px; align-content: start; background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
+.price { font-family: var(--f-data); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.price small { font-size: 14px; font-weight: 400; color: var(--muted); }
+.mkt { font-size: 13px; color: var(--muted); }
+.mkt .num { color: var(--fg); }
+.disc { justify-self: start; font: 600 13px var(--f-data); color: var(--good); background: var(--good-soft); padding: 2px 8px; border-radius: 6px; }
+.meter { position: relative; height: 8px; background: var(--line); border-radius: 4px; margin: 4px 0 2px; }
+.meter i { position: absolute; inset: 0 auto 0 0; background: var(--good); border-radius: 4px; }
+.meter b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); }
+.legend { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); }
+.margin { font-size: 13px; }
+.margin .num { font-weight: 600; color: var(--good); }
+.score { font-size: 12px; color: var(--muted); }
+
+.actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding-top: 12px; }
+.btn { font: 500 13.5px var(--f-body); border-radius: 8px; padding: 7px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn[aria-pressed="true"] { background: var(--fg); color: var(--surface); border-color: var(--fg); }
+.btn:disabled { opacity: .5; cursor: default; }
+.spacer { flex: 1; }
+.msg { grid-column: 1 / -1; background: var(--surface-2); border-radius: 10px; padding: 12px; font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 6px; color: var(--muted); font-size: 12.5px; }
+
+.empty, .note { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 28px; text-align: center; color: var(--muted); }
+.note { padding: 12px 16px; text-align: left; border-style: solid; font-size: 13.5px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--surface); padding: 8px 14px; border-radius: 8px; font-size: 14px; }
+footer { color: var(--muted); font-size: 12.5px; }
+
+@media (max-width: 720px) {
+  .card { grid-template-columns: minmax(0, 1fr); }
+  .price { font-size: 22px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card { transition: border-color .2s; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Автоохотник CZ</h1>
+    <p class="lede" id="lede">Ликвидные машины на Sauto.cz и Bazoš.cz, выставленные заметно ниже рынка. Рынок — медиана цен похожих объявлений: та же модель и поколение, близкий год, пробег, двигатель и топливо. Обновляется автоматически каждые 2 часа.</p>
+    <a class="btn primary tg" id="tg" href="#" target="_blank" rel="noopener" hidden>Уведомления в Telegram</a>
+  </header>
+
+  <section class="run" id="run" aria-label="Последний поиск">
+    <div><span class="k">Последний поиск</span><span class="v" id="r-time">—</span></div>
+    <div><span class="k">Проверено объявлений</span><span class="v" id="r-checked">—</span></div>
+    <div><span class="k">Для сравнения цен</span><span class="v" id="r-comps">—</span></div>
+    <div><span class="k">Актуальных находок</span><span class="v accent" id="r-deals">—</span></div>
+  </section>
+
+  <div class="bar" role="toolbar" aria-label="Фильтры">
+    <div class="tabs" id="tabs"></div>
+    <select id="f-model" aria-label="Модель"><option value="">Все модели</option></select>
+    <select id="f-seller" aria-label="Продавец">
+      <option value="">Все продавцы</option>
+      <option value="private">Только частники</option>
+      <option value="dealer">Только дилеры</option>
+    </select>
+    <select id="f-sort" aria-label="Сортировка">
+      <option value="score">Сначала лучшие</option>
+      <option value="discount">Самая большая скидка</option>
+      <option value="margin">Самая большая маржа</option>
+      <option value="km">Меньше пробег</option>
+      <option value="price">Дешевле</option>
+      <option value="found">Новые находки</option>
+    </select>
+    <label class="chk"><input type="checkbox" id="f-hot"> С ключевыми фразами</label>
+  </div>
+
+  <div id="status" class="note" hidden></div>
+  <main class="list" id="list" aria-live="polite">
+    <div class="empty">Загружаю находки… Если поиск ещё не запускался, здесь появятся машины после первого прохода.</div>
+  </main>
+
+  <footer>Цены — запрашиваемые, не цены сделок. Перед покупкой проверьте VIN по Cebia, историю пробега и состояние на месте. Сообщения продавцам отправляете вы сами. Отметки «Интересно», «Связался», «Не подходит» сохраняются только в этом браузере.</footer>
+</div>
+
+<script>
+(() => {
+  const STATUSES = [
+    { id: "new", label: "Новые" },
+    { id: "interested", label: "Интересно" },
+    { id: "contacted", label: "Связался" },
+    { id: "rejected", label: "Не подходит" },
+    { id: "archived", label: "Архив" },
+    { id: "all", label: "Все" },
+  ];
+  const state = { deals: [], meta: null, tab: "new", model: "", seller: "", sort: "score", hot: false, openMsg: new Set(), openDesc: new Set() };
+  let local = {};
+  try { local = JSON.parse(localStorage.getItem("ah-status") || "{}") || {}; } catch (e) {}
+  function saveLocal() { try { localStorage.setItem("ah-status", JSON.stringify(local)); } catch (e) {} }
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => (n == null || isNaN(n)) ? "—" : Math.round(n).toLocaleString("cs-CZ").replace(/ /g, " ");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const statusOf = (d) => local[d._id] || (d.live === false ? "archived" : "new");
+
+  try { const saved = JSON.parse(localStorage.getItem("ah-filters") || "{}"); Object.assign(state, saved); } catch (e) {}
+  function saveFilters() {
+    try { localStorage.setItem("ah-filters", JSON.stringify({ tab: state.tab, model: state.model, seller: state.seller, sort: state.sort, hot: state.hot })); } catch (e) {}
+  }
+
+  function toast(text) {
+    const t = document.createElement("div"); t.className = "toast"; t.textContent = text; document.body.appendChild(t);
+    setTimeout(() => t.remove(), 1800);
+  }
+  function note(text) { const n = $("status"); n.hidden = !text; n.textContent = text || ""; }
+
+  function renderRun() {
+    const m = state.meta || {};
+    $("r-time").textContent = m.run_at || "—";
+    $("r-checked").textContent = fmt(m.listings_checked);
+    $("r-comps").textContent = fmt(m.comparables);
+    $("r-deals").textContent = fmt(state.deals.filter((d) => ["new", "interested", "contacted"].includes(statusOf(d))).length);
+  }
+
+  function renderControls() {
+    const counts = {};
+    for (const d of state.deals) counts[statusOf(d)] = (counts[statusOf(d)] || 0) + 1;
+    $("tabs").innerHTML = STATUSES.map((s) => `<button class="tab" data-tab="${s.id}" aria-pressed="${state.tab === s.id}">${s.label}<span class="c">${s.id === "all" ? state.deals.length : (counts[s.id] || 0)}</span></button>`).join("");
+    const models = [...new Set(state.deals.map((d) => d.model))].sort();
+    const sel = $("f-model");
+    sel.innerHTML = `<option value="">Все модели</option>` + models.map((m) => `<option ${m === state.model ? "selected" : ""}>${esc(m)}</option>`).join("");
+    $("f-seller").value = state.seller; $("f-sort").value = state.sort; $("f-hot").checked = state.hot;
+  }
+
+  function visible() {
+    let xs = state.deals.filter((d) => state.tab === "all" || statusOf(d) === state.tab);
+    if (state.model) xs = xs.filter((d) => d.model === state.model);
+    if (state.seller) xs = xs.filter((d) => (state.seller === "private") === !!d.private);
+    if (state.hot) xs = xs.filter((d) => (d.hot || []).length);
+    const key = {
+      score: (d) => -d.score, discount: (d) => -d.discount, margin: (d) => -d.resale_margin,
+      km: (d) => d.km, price: (d) => d.price, found: (d) => -(Date.parse((d.first_found_at || d.found_at || "").replace(" ", "T")) || 0),
+    }[state.sort];
+    return xs.sort((a, b) => key(a) - key(b));
+  }
+
+  function cheaperBy(d) {
+    const h = d.price_history || [];
+    return h.length > 1 && h[0][1] > d.price ? h[0][1] - d.price : 0;
+  }
+
+  function vinRow(d) {
+    if (!d.vin) {
+      return `<div class="vin"><span class="vin-k">VIN</span><span class="vin-none">нет в объявлении — попросите у продавца</span></div>`;
+    }
+    return `<div class="vin"><span class="vin-k">VIN</span><code id="v-${d._id}">${esc(d.vin)}</code>
+      <button class="btn small" data-copyvin="${d._id}">Копировать VIN</button>
+      <a class="btn small" href="https://www.kontrolatachometru.cz/" target="_blank" rel="noopener">Проверить пробег (MD ČR)</a></div>`;
+  }
+
+  function card(d) {
+    const st = statusOf(d);
+    const pct = Math.max(0, Math.min(100, (d.price / (d.market * 1.15)) * 100));
+    const mk = Math.min(100, (1 / 1.15) * 100);
+    const chips = [
+      `<span class="chip src">${d.source === "sauto" ? "Sauto.cz" : "Bazoš.cz"}</span>`,
+      `<span class="chip ${d.private ? "good" : ""}">${d.private ? "частник" : "дилер" + (d.seller && d.seller !== "частник" ? ": " + esc(d.seller) : "")}</span>`,
+      ...(d.hot || []).map((h) => `<span class="chip hot">${esc(h)}</span>`),
+      ...(d.warnings || []).map((w) => `<span class="chip warn">⚠ ${esc(w)}</span>`),
+      d.crashed_in_past ? `<span class="chip bad">отмечена как битая в прошлом</span>` : "",
+      (d.comps < 10 || /^модель|топливо не указано/.test(d.comps_basis || "")) ? `<span class="chip">оценка рынка приблизительная</span>` : "",
+      st === "archived" ? `<span class="chip bad">пропала из выдачи: продана, снята или подорожала</span>` : "",
+      cheaperBy(d) ? `<span class="chip good">подешевела: было ${fmt(d.price_history[0][1])} Kč</span>` : "",
+      d.service_book ? `<span class="chip">сервисная книжка</span>` : "",
+      d.cebia_report ? `<span class="chip good">есть отчёт Cebia от продавца</span>` : "",
+      d.km_per_year < 12000 ? `<span class="chip good">малый пробег в год</span>` : "",
+    ].join("");
+    const facts = [
+      `<span><b>${fmt(d.km)}</b> км</span>`,
+      `<span><b>${fmt(d.km_per_year)}</b> км/год</span>`,
+      d.engine ? `<span>двигатель <b>${esc(d.engine)}</b></span>` : "",
+      d.power_kw ? `<span><b>${d.power_kw}</b> kW</span>` : "",
+      d.fuel ? `<span>${{ nafta: "дизель", benzin: "бензин", hybrid: "гибрид", elektro: "электро" }[d.fuel] || esc(d.fuel)}</span>` : "",
+      d.gearbox ? `<span>${d.gearbox === "automat" ? "автомат" : "механика"}</span>` : "",
+      d.location ? `<span>📍 ${esc(d.location)}</span>` : "",
+      d.created ? `<span>выставлено <b>${esc(d.created.slice(0, 10))}</b></span>` : "",
+      d.first_found_at ? `<span>найдено <b>${esc(d.first_found_at)}</b></span>` : "",
+    ].join("");
+    const desc = d.description ? `<div class="desc ${state.openDesc.has(d._id) ? "open" : ""}">${esc(d.description)}</div><button class="more" data-desc="${d._id}">${state.openDesc.has(d._id) ? "Свернуть" : "Описание целиком"}</button>` : "";
+    const msg = state.openMsg.has(d._id) ? `<div class="msg"><div class="msg-head"><span>Сообщение продавцу (чешский). Предложение: <b class="num">${fmt(d.offer)} Kč</b></span><button class="btn" data-copy="${d._id}">Копировать</button></div><span id="m-${d._id}">${esc(d.message_cz)}</span></div>` : "";
+    const found = Date.parse((d.first_found_at || "").replace(" ", "T"));
+    const fresh = st === "new" && found && Date.now() - found < 24 * 3600 * 1000;
+    return `<article class="card ${fresh ? "is-new" : ""}">
+      <div>
+        <div class="head"><span class="plate"><span class="eu">CZ</span><span class="t">${esc(d.year)}</span></span><span class="chip">${esc(d.model)}</span></div>
+        <div class="title"><a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.title)}</a></div>
+        <div class="facts">${facts}</div>
+        <div class="chips">${chips}</div>
+        ${vinRow(d)}
+        ${desc}
+      </div>
+      <div class="tag">
+        <div class="price">${fmt(d.price)} <small>Kč</small></div>
+        <span class="disc">−${Math.round(d.discount * 100)} % от рынка</span>
+        <div class="meter" aria-hidden="true"><i style="width:${pct}%"></i><b style="left:${mk}%"></b></div>
+        <div class="legend"><span>цена</span><span>рынок</span></div>
+        <div class="mkt">Рынок ≈ <span class="num">${fmt(d.market)} Kč</span> · ${d.comps} похожих (${esc(d.comps_basis)})</div>
+        <div class="margin">Перепродажа ≈ <span class="num">+${fmt(d.resale_margin)} Kč</span></div>
+        <div class="score">Оценка находки: <span class="num">${d.score}</span></div>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="${esc(d.url)}" target="_blank" rel="noopener">Открыть объявление</a>
+        <button class="btn" data-msg="${d._id}" aria-expanded="${state.openMsg.has(d._id)}">Сообщение продавцу</button>
+        <span class="spacer"></span>
+        ${["interested", "contacted", "rejected"].map((s) => `<button class="btn" data-set="${s}" data-id="${d._id}" aria-pressed="${st === s}">${{ interested: "Интересно", contacted: "Связался", rejected: "Не подходит" }[s]}</button>`).join("")}
+      </div>
+      ${msg}
+    </article>`;
+  }
+
+  function render() {
+    renderRun(); renderControls();
+    const xs = visible();
+    $("list").innerHTML = xs.length ? xs.map(card).join("") : `<div class="empty">${state.deals.length ? "В этой вкладке пока пусто. Попробуйте другую вкладку или снимите фильтры." : "Находок пока нет. Они появятся после первого поиска."}</div>`;
+  }
+
+  document.addEventListener("click", async (e) => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.tab) { state.tab = t.dataset.tab; saveFilters(); render(); }
+    else if (t.dataset.msg) { const id = t.dataset.msg; state.openMsg.has(id) ? state.openMsg.delete(id) : state.openMsg.add(id); render(); }
+    else if (t.dataset.desc) { const id = t.dataset.desc; state.openDesc.has(id) ? state.openDesc.delete(id) : state.openDesc.add(id); render(); }
+    else if (t.dataset.copy || t.dataset.copyvin) {
+      const el = t.dataset.copy ? $("m-" + t.dataset.copy) : $("v-" + t.dataset.copyvin);
+      try { await navigator.clipboard.writeText(el.textContent); toast("Сообщение скопировано"); }
+      catch (err) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Текст выделен — скопируйте вручную"); }
+    } else if (t.dataset.set) {
+      const id = t.dataset.id;
+      if (local[id] === t.dataset.set) delete local[id]; else local[id] = t.dataset.set;
+      saveLocal(); render();
+    }
+  });
+  $("f-model").addEventListener("change", (e) => { state.model = e.target.value; saveFilters(); render(); });
+  $("f-seller").addEventListener("change", (e) => { state.seller = e.target.value; saveFilters(); render(); });
+  $("f-sort").addEventListener("change", (e) => { state.sort = e.target.value; saveFilters(); render(); });
+  $("f-hot").addEventListener("change", (e) => { state.hot = e.target.checked; saveFilters(); render(); });
+
+  render();
+
+  (async () => {
+    try {
+      const [dr, mr] = await Promise.all([fetch("data/deals.json", { cache: "no-store" }), fetch("data/meta.json", { cache: "no-store" })]);
+      if (!dr.ok) throw new Error(dr.status);
+      const data = await dr.json();
+      state.meta = mr.ok ? await mr.json() : null;
+      state.deals = (data.deals || []).map((d) => ({ ...d, _id: d.id }));
+      if (state.meta && state.meta.telegram_url) { const a = $("tg"); a.href = state.meta.telegram_url; a.hidden = false; }
+      note("");
+      render();
+    } catch (err) {
+      note("Не удалось загрузить находки. Обновите страницу чуть позже.");
+      $("list").innerHTML = `<div class="empty">Нет данных.</div>`;
+    }
+  })();
+})();
+</script>
+
+</body>
+</html>
