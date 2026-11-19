@@ -105,9 +105,18 @@ def main():
     json.dump(meta, open(f"{DATA}/meta.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(f"new={len(new)} cheaper={len(cheaper)} live={meta['live']} total={len(deals)}")
 
-    if not new and not cheaper:
-        return
     site = os.environ.get("SITE_URL", "")
+    if not new and not cheaper:
+        if os.environ.get("NOTIFY_ALWAYS", "").lower() == "true":
+            # Manual run: confirm the bot works and show the best cars currently on the market.
+            best = [d for d in deals if d.get("live")][:5]
+            parts = [f"✅ <b>Автоохотник работает.</b> Поиск {html.escape(now)}: проверено {n(stats['listings_checked'])} "
+                     f"объявлений, новых машин ниже рынка нет.", "<b>Лучшие варианты сейчас:</b>"]
+            parts += [card(d) for d in best]
+            if site:
+                parts.append(f"Вся лента: {html.escape(site)}")
+            telegram("\n\n".join(parts)[:4000])
+        return
     new.sort(key=lambda d: d["score"], reverse=True)
     parts = [f"🚗 <b>Новые машины ниже рынка: {len(new)}</b>" if new else "📉 <b>Подешевели машины из ленты</b>"]
     parts += [card(d) for d in new[:MAX_IN_MESSAGE]]
