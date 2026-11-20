@@ -1,12 +1,12 @@
 {
- "run_at": "2026-11-19 21:25",
- "seconds": 481,
- "requests": 490,
+ "run_at": "2026-11-20 02:46",
+ "seconds": 445,
+ "requests": 488,
  "errors": 0,
- "listings_checked": 17392,
- "comparables": 31535,
- "deals": 351,
- "new_deals": 0,
+ "listings_checked": 17408,
+ "comparables": 31564,
+ "deals": 353,
+ "new_deals": 3,
  "with_phrases": 20,
  "dropped_red_flags": {
   "битая": 7,
@@ -15,9 +15,9 @@
   "не на ходу": 1,
   "проблема с мотором": 2
  },
- "new_added": 0,
- "cheaper": 0,
- "live": 351,
- "total": 360,
+ "new_added": 3,
+ "cheaper": 2,
+ "live": 353,
+ "total": 363,
  "telegram_url": ""
 }
