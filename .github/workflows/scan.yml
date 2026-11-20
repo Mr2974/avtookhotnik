@@ -2,9 +2,15 @@ name: Поиск машин ниже рынка
 
 on:
   schedule:
-    # Каждые 2 часа, примерно 7:13–23:13 по Праге зимой (время GitHub — UTC, запуск может опоздать на 5–20 минут).
-    - cron: "13 6-22/2 * * *"
-  workflow_dispatch: {}
+    # GitHub запускает расписание с задержками и иногда пропускает запуски, поэтому пробуем каждый час,
+    # а шаг «Пора ли искать» пропускает попытку, если с прошлого поиска прошло меньше 100 минут или сейчас ночь.
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      report:
+        description: "Прислать отчёт в Telegram, даже если новых машин нет"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -22,23 +28,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Пора ли искать
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          python3 - >> "$GITHUB_OUTPUT" <<'EOF'
+          import datetime as dt, json, os, sys
+          now, run = dt.datetime.now(), True
+          if os.environ["EVENT"] == "schedule":
+              if now.hour < 6:
+                  run = False
+                  print("Ночь в Праге, пропускаю", file=sys.stderr)
+              try:
+                  last = dt.datetime.strptime(json.load(open("docs/data/meta.json"))["run_at"], "%Y-%m-%d %H:%M")
+                  if (now - last).total_seconds() < 100 * 60:
+                      run = False
+                      print(f"Последний поиск был в {last:%H:%M}, пропускаю", file=sys.stderr)
+              except Exception as e:
+                  print("Нет данных о прошлом поиске:", e, file=sys.stderr)
+          print(f"run={'true' if run else 'false'}")
+          EOF
+
       - name: Список уже найденных машин
+        if: steps.gate.outputs.run == 'true'
         run: |
           python3 -c "import json,os; p='docs/data/deals.json'; d=json.load(open(p))['deals'] if os.path.exists(p) else []; json.dump([x['id'] for x in d], open('seen.json','w'))"
 
       - name: Поиск на Sauto.cz и Bazoš.cz
+        if: steps.gate.outputs.run == 'true'
         run: python3 car_hunter.py --config config.json --out out --seen seen.json
 
       - name: Обновить сайт и отправить уведомление
+        if: steps.gate.outputs.run == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_INVITE: ${{ vars.TELEGRAM_INVITE }}
-          NOTIFY_ALWAYS: ${{ github.event_name == 'workflow_dispatch' }}
+          NOTIFY_ALWAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.report }}
           SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: python3 update_site.py
 
       - name: Сохранить находки
+        if: steps.gate.outputs.run == 'true'
         run: |
           git config user.name "avtookhotnik-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
