@@ -146,84 +146,253 @@ footer { color: var(--muted); font-size: 12.5px; }
 @media (prefers-reduced-motion: no-preference) {
   .card { transition: border-color .2s; }
 }
+.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px 20px; }
+.intro { min-width: 0; flex: 1 1 320px; }
+.langs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--surface-2); }
+.lang { border: 0; background: transparent; color: var(--muted); font: 600 12.5px var(--f-data); letter-spacing: .04em; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.lang[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+.lang:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.run .sub { font-size: 12px; color: var(--muted); }
+.chip .hint { opacity: .75; font-weight: 400; }
 </style>
 </head>
 <body>
 
 <div class="wrap">
-  <header>
-    <h1>Автоохотник CZ</h1>
-    <p class="lede" id="lede">Ликвидные машины на Sauto.cz и Bazoš.cz, выставленные заметно ниже рынка. Рынок — медиана цен похожих объявлений: та же модель и поколение, близкий год, пробег, двигатель и топливо. Обновляется автоматически каждые 2 часа.</p>
-    <a class="btn primary tg" id="tg" href="#" target="_blank" rel="noopener" hidden>Уведомления в Telegram</a>
+  <header class="top">
+    <div class="intro">
+      <h1 data-i18n="appName">Автоохотник CZ</h1>
+      <p class="lede" data-i18n="lede">Ликвидные машины на Sauto.cz и Bazoš.cz, выставленные заметно ниже рынка.</p>
+      <a class="btn primary tg" id="tg" href="#" target="_blank" rel="noopener" hidden data-i18n="tg">Уведомления в Telegram</a>
+    </div>
+    <div class="langs" role="group" aria-label="Language / Язык">
+      <button class="lang" data-lang="ru" aria-pressed="false" title="Русский">RU</button>
+      <button class="lang" data-lang="en" aria-pressed="false" title="English">EN</button>
+      <button class="lang" data-lang="uk" aria-pressed="false" title="Українська">UA</button>
+      <button class="lang" data-lang="cs" aria-pressed="false" title="Čeština">CZ</button>
+    </div>
   </header>
 
-  <section class="run" id="run" aria-label="Последний поиск">
-    <div><span class="k">Последний поиск</span><span class="v" id="r-time">—</span></div>
-    <div><span class="k">Проверено объявлений</span><span class="v" id="r-checked">—</span></div>
-    <div><span class="k">Для сравнения цен</span><span class="v" id="r-comps">—</span></div>
-    <div><span class="k">Актуальных находок</span><span class="v accent" id="r-deals">—</span></div>
+  <section class="run" id="run">
+    <div><span class="k" data-i18n="lastRun">Последний поиск</span><span class="v" id="r-time">—</span><span class="sub" id="r-ago"></span></div>
+    <div><span class="k" data-i18n="checked">Проверено объявлений</span><span class="v" id="r-checked">—</span></div>
+    <div><span class="k" data-i18n="compsCount">Для сравнения цен</span><span class="v" id="r-comps">—</span></div>
+    <div><span class="k" data-i18n="liveCount">Актуальных находок</span><span class="v accent" id="r-deals">—</span></div>
   </section>
 
-  <div class="bar" role="toolbar" aria-label="Фильтры">
+  <div class="bar" role="toolbar" id="bar">
     <div class="tabs" id="tabs"></div>
-    <select id="f-model" aria-label="Модель"><option value="">Все модели</option></select>
-    <select id="f-seller" aria-label="Продавец">
-      <option value="">Все продавцы</option>
-      <option value="private">Только частники</option>
-      <option value="dealer">Только дилеры</option>
+    <select id="f-model"><option value="">—</option></select>
+    <select id="f-seller">
+      <option value="" data-i18n="allSellers">Все продавцы</option>
+      <option value="private" data-i18n="privateOnly">Только частники</option>
+      <option value="dealer" data-i18n="dealerOnly">Только дилеры</option>
     </select>
-    <select id="f-sort" aria-label="Сортировка">
-      <option value="score">Сначала лучшие</option>
-      <option value="discount">Самая большая скидка</option>
-      <option value="margin">Самая большая маржа</option>
-      <option value="km">Меньше пробег</option>
-      <option value="price">Дешевле</option>
-      <option value="found">Новые находки</option>
+    <select id="f-sort">
+      <option value="score" data-i18n="sortScore">Сначала лучшие</option>
+      <option value="discount" data-i18n="sortDiscount">Самая большая скидка</option>
+      <option value="margin" data-i18n="sortMargin">Самая большая маржа</option>
+      <option value="km" data-i18n="sortKm">Меньше пробег</option>
+      <option value="price" data-i18n="sortPrice">Дешевле</option>
+      <option value="found" data-i18n="sortFound">Новые находки</option>
     </select>
-    <label class="chk"><input type="checkbox" id="f-hot"> С ключевыми фразами</label>
+    <label class="chk"><input type="checkbox" id="f-hot"> <span data-i18n="hotOnly">С ключевыми фразами</span></label>
   </div>
 
   <div id="status" class="note" hidden></div>
   <main class="list" id="list" aria-live="polite">
-    <div class="empty">Загружаю находки… Если поиск ещё не запускался, здесь появятся машины после первого прохода.</div>
+    <div class="empty" data-i18n="loading">Загружаю находки…</div>
   </main>
 
-  <footer>Цены — запрашиваемые, не цены сделок. Перед покупкой проверьте VIN по Cebia, историю пробега и состояние на месте. Сообщения продавцам отправляете вы сами. Отметки «Интересно», «Связался», «Не подходит» сохраняются только в этом браузере.</footer>
+  <footer data-i18n="footer">Цены — запрашиваемые, не цены сделок.</footer>
 </div>
 
 <script>
 (() => {
-  const STATUSES = [
-    { id: "new", label: "Новые" },
-    { id: "interested", label: "Интересно" },
-    { id: "contacted", label: "Связался" },
-    { id: "rejected", label: "Не подходит" },
-    { id: "archived", label: "Архив" },
-    { id: "all", label: "Все" },
-  ];
+  const I18N = {
+    ru: {
+      appName: "Автоохотник CZ",
+      lede: "Ликвидные машины на Sauto.cz и Bazoš.cz, выставленные заметно ниже рынка. Рынок — медиана цен похожих объявлений: та же модель и поколение, близкий год, пробег, двигатель и топливо. Обновляется автоматически каждые 2 часа.",
+      tg: "Уведомления в Telegram", lastRun: "Последний поиск", checked: "Проверено объявлений", compsCount: "Для сравнения цен", liveCount: "Актуальных находок",
+      minAgo: "{n} мин назад", hAgo: "{n} ч назад", dAgo: "{n} дн назад", justNow: "только что",
+      new: "Новые", interested: "Интересно", contacted: "Связался", rejected: "Не подходит", archived: "Архив", all: "Все",
+      allModels: "Все модели", allSellers: "Все продавцы", privateOnly: "Только частники", dealerOnly: "Только дилеры",
+      sortScore: "Сначала лучшие", sortDiscount: "Самая большая скидка", sortMargin: "Самая большая маржа", sortKm: "Меньше пробег", sortPrice: "Дешевле", sortFound: "Новые находки",
+      hotOnly: "С ключевыми фразами", loading: "Загружаю находки…",
+      footer: "Цены — запрашиваемые, не цены сделок. Перед покупкой проверьте VIN, историю пробега и состояние машины на месте. Сообщения продавцам отправляете вы сами. Отметки «Интересно», «Связался», «Не подходит» сохраняются только в этом браузере.",
+      private: "частник", dealer: "дилер", crashed: "отмечена как битая в прошлом", approx: "оценка рынка приблизительная",
+      gone: "пропала из выдачи: продана, снята или подорожала", cheaper: "подешевела: было {p} Kč", serviceBook: "сервисная книжка",
+      cebia: "есть отчёт Cebia от продавца", lowKm: "малый пробег в год", km: "км", kmYear: "км/год", engine: "двигатель",
+      nafta: "дизель", benzin: "бензин", hybrid: "гибрид", elektro: "электро", automat: "автомат", manual: "механика",
+      listed: "выставлено", foundAt: "найдено", descMore: "Описание целиком", descLess: "Свернуть",
+      vinNone: "нет в объявлении — попросите у продавца", copyVin: "Копировать VIN", checkKm: "Проверить пробег (MD ČR)",
+      msgHead: "Сообщение продавцу (на чешском). Предложение:", copy: "Копировать", offMarket: "−{p} % от рынка",
+      legendPrice: "цена", legendMarket: "рынок", marketLine: "Рынок ≈ {m} Kč · {n} похожих ({b})", resale: "Перепродажа ≈", score: "Оценка находки:",
+      open: "Открыть объявление", msgBtn: "Сообщение продавцу",
+      emptyTab: "В этой вкладке пока пусто. Попробуйте другую вкладку или снимите фильтры.", emptyAll: "Находок пока нет. Они появятся после первого поиска.",
+      copied: "Скопировано", selectManual: "Текст выделен — скопируйте вручную", loadError: "Не удалось загрузить находки. Обновите страницу чуть позже.", noData: "Нет данных",
+      bEngine: "тот же двигатель", bFuelGear: "то же топливо и КПП", bFuel: "то же топливо", bModel: "та же модель", bKm: "±{k} тыс. км", bNoFuel: "топливо не указано",
+      wNoStk: "без STK (техосмотра)", wRepair: "требует ремонта", wImport: "импорт без истории?", wLowKm: "подозрительно малый пробег — проверить по VIN",
+      wChain: "сетевой салон: уточните, не зависит ли цена от кредита или доп. услуг", wCheap: "слишком дёшево — проверить на мошенничество и скрытые дефекты",
+      hMove: "Переезд / новое авто",
+      hints: { "Rychlé jednání": "быстрое решение", "Při rychlém jednání sleva": "скидка при быстрой сделке", "Potřebuji prodat": "нужно продать", "Dohoda možná": "возможен торг", "Rodinné auto": "семейный автомобиль", "Dědictví": "наследство" },
+    },
+    en: {
+      appName: "Car Hunter CZ",
+      lede: "Liquid used cars on Sauto.cz and Bazoš.cz listed well below market. The market price is the median of similar listings: same model and generation, similar year, mileage, engine and fuel. Updated automatically every 2 hours.",
+      tg: "Telegram alerts", lastRun: "Last search", checked: "Listings checked", compsCount: "Used for price comparison", liveCount: "Active finds",
+      minAgo: "{n} min ago", hAgo: "{n} h ago", dAgo: "{n} d ago", justNow: "just now",
+      new: "New", interested: "Interesting", contacted: "Contacted", rejected: "Not for me", archived: "Archive", all: "All",
+      allModels: "All models", allSellers: "All sellers", privateOnly: "Private sellers only", dealerOnly: "Dealers only",
+      sortScore: "Best first", sortDiscount: "Biggest discount", sortMargin: "Biggest margin", sortKm: "Lowest mileage", sortPrice: "Cheapest", sortFound: "Newest finds",
+      hotOnly: "With hot phrases", loading: "Loading finds…",
+      footer: "Prices are asking prices, not sale prices. Before buying, check the VIN, the mileage history and the car in person. You contact sellers yourself. The “Interesting”, “Contacted” and “Not for me” marks are saved in this browser only.",
+      private: "private", dealer: "dealer", crashed: "marked as damaged in the past", approx: "rough market estimate",
+      gone: "gone from results: sold, removed or price raised", cheaper: "price dropped: was {p} Kč", serviceBook: "service book",
+      cebia: "seller attached a Cebia report", lowKm: "low yearly mileage", km: "km", kmYear: "km/yr", engine: "engine",
+      nafta: "diesel", benzin: "petrol", hybrid: "hybrid", elektro: "electric", automat: "automatic", manual: "manual",
+      listed: "listed", foundAt: "found", descMore: "Full description", descLess: "Collapse",
+      vinNone: "not in the ad — ask the seller", copyVin: "Copy VIN", checkKm: "Check mileage (MD ČR)",
+      msgHead: "Message to the seller (in Czech). Offer:", copy: "Copy", offMarket: "−{p} % below market",
+      legendPrice: "price", legendMarket: "market", marketLine: "Market ≈ {m} Kč · {n} similar ({b})", resale: "Resale ≈", score: "Deal score:",
+      open: "Open listing", msgBtn: "Message seller",
+      emptyTab: "Nothing in this tab yet. Try another tab or clear the filters.", emptyAll: "No finds yet. They will appear after the first search.",
+      copied: "Copied", selectManual: "Text selected — copy it manually", loadError: "Could not load the finds. Reload the page a bit later.", noData: "No data",
+      bEngine: "same engine", bFuelGear: "same fuel and gearbox", bFuel: "same fuel", bModel: "same model", bKm: "±{k}k km", bNoFuel: "fuel not stated",
+      wNoStk: "no valid STK (inspection)", wRepair: "needs repair", wImport: "import without history?", wLowKm: "suspiciously low mileage — check the VIN",
+      wChain: "dealer chain: ask whether the price depends on financing or extras", wCheap: "too cheap — check for fraud and hidden defects",
+      hMove: "Moving / new car",
+      hints: { "Rychlé jednání": "quick deal", "Při rychlém jednání sleva": "discount for a quick deal", "Potřebuji prodat": "need to sell", "Dohoda možná": "negotiable", "Rodinné auto": "family car", "Dědictví": "inheritance" },
+    },
+    uk: {
+      appName: "Автомисливець CZ",
+      lede: "Ліквідні авто на Sauto.cz і Bazoš.cz, виставлені помітно нижче ринку. Ринок — медіана цін схожих оголошень: та сама модель і покоління, близький рік, пробіг, двигун і пальне. Оновлюється автоматично кожні 2 години.",
+      tg: "Сповіщення в Telegram", lastRun: "Останній пошук", checked: "Перевірено оголошень", compsCount: "Для порівняння цін", liveCount: "Актуальних знахідок",
+      minAgo: "{n} хв тому", hAgo: "{n} год тому", dAgo: "{n} дн тому", justNow: "щойно",
+      new: "Нові", interested: "Цікаво", contacted: "Зв’язався", rejected: "Не підходить", archived: "Архів", all: "Усі",
+      allModels: "Усі моделі", allSellers: "Усі продавці", privateOnly: "Лише приватні", dealerOnly: "Лише дилери",
+      sortScore: "Спочатку найкращі", sortDiscount: "Найбільша знижка", sortMargin: "Найбільша маржа", sortKm: "Менший пробіг", sortPrice: "Дешевші", sortFound: "Нові знахідки",
+      hotOnly: "З ключовими фразами", loading: "Завантажую знахідки…",
+      footer: "Ціни — запитувані, а не ціни угод. Перед купівлею перевірте VIN, історію пробігу та стан авто на місці. Продавцям пишете ви самі. Позначки «Цікаво», «Зв’язався», «Не підходить» зберігаються лише в цьому браузері.",
+      private: "приватний", dealer: "дилер", crashed: "позначена як бита в минулому", approx: "оцінка ринку приблизна",
+      gone: "зникла з видачі: продана, знята або подорожчала", cheaper: "подешевшала: було {p} Kč", serviceBook: "сервісна книжка",
+      cebia: "продавець додав звіт Cebia", lowKm: "малий річний пробіг", km: "км", kmYear: "км/рік", engine: "двигун",
+      nafta: "дизель", benzin: "бензин", hybrid: "гібрид", elektro: "електро", automat: "автомат", manual: "механіка",
+      listed: "виставлено", foundAt: "знайдено", descMore: "Опис повністю", descLess: "Згорнути",
+      vinNone: "немає в оголошенні — попросіть у продавця", copyVin: "Копіювати VIN", checkKm: "Перевірити пробіг (MD ČR)",
+      msgHead: "Повідомлення продавцю (чеською). Пропозиція:", copy: "Копіювати", offMarket: "−{p} % від ринку",
+      legendPrice: "ціна", legendMarket: "ринок", marketLine: "Ринок ≈ {m} Kč · {n} схожих ({b})", resale: "Перепродаж ≈", score: "Оцінка знахідки:",
+      open: "Відкрити оголошення", msgBtn: "Повідомлення продавцю",
+      emptyTab: "У цій вкладці поки порожньо. Спробуйте іншу вкладку або зніміть фільтри.", emptyAll: "Знахідок поки немає. Вони з’являться після першого пошуку.",
+      copied: "Скопійовано", selectManual: "Текст виділено — скопіюйте вручну", loadError: "Не вдалося завантажити знахідки. Оновіть сторінку трохи пізніше.", noData: "Немає даних",
+      bEngine: "той самий двигун", bFuelGear: "те саме пальне і КПП", bFuel: "те саме пальне", bModel: "та сама модель", bKm: "±{k} тис. км", bNoFuel: "пальне не вказано",
+      wNoStk: "без STK (техогляду)", wRepair: "потребує ремонту", wImport: "імпорт без історії?", wLowKm: "підозріло малий пробіг — перевірте VIN",
+      wChain: "мережевий салон: уточніть, чи не залежить ціна від кредиту або дод. послуг", wCheap: "занадто дешево — перевірте на шахрайство і приховані дефекти",
+      hMove: "Переїзд / нове авто",
+      hints: { "Rychlé jednání": "швидке рішення", "Při rychlém jednání sleva": "знижка за швидку угоду", "Potřebuji prodat": "потрібно продати", "Dohoda možná": "можливий торг", "Rodinné auto": "сімейне авто", "Dědictví": "спадщина" },
+    },
+    cs: {
+      appName: "Lovec aut CZ",
+      lede: "Dobře prodejná ojetá auta na Sauto.cz a Bazoš.cz nabízená výrazně pod tržní cenou. Tržní cena je medián podobných inzerátů: stejný model a generace, podobný rok, nájezd, motor a palivo. Aktualizuje se automaticky každé 2 hodiny.",
+      tg: "Upozornění v Telegramu", lastRun: "Poslední hledání", checked: "Prověřeno inzerátů", compsCount: "Pro srovnání cen", liveCount: "Aktuálních nálezů",
+      minAgo: "před {n} min", hAgo: "před {n} h", dAgo: "před {n} dny", justNow: "právě teď",
+      new: "Nové", interested: "Zajímavé", contacted: "Kontaktováno", rejected: "Nevyhovuje", archived: "Archiv", all: "Vše",
+      allModels: "Všechny modely", allSellers: "Všichni prodejci", privateOnly: "Jen soukromí", dealerOnly: "Jen autobazary",
+      sortScore: "Nejlepší první", sortDiscount: "Největší sleva", sortMargin: "Největší marže", sortKm: "Nejnižší nájezd", sortPrice: "Nejlevnější", sortFound: "Nejnovější nálezy",
+      hotOnly: "S klíčovými frázemi", loading: "Načítám nálezy…",
+      footer: "Ceny jsou nabídkové, ne prodejní. Před koupí si ověřte VIN, historii nájezdu a stav vozu na místě. Prodejce kontaktujete sami. Značky „Zajímavé“, „Kontaktováno“ a „Nevyhovuje“ se ukládají jen v tomto prohlížeči.",
+      private: "soukromník", dealer: "autobazar", crashed: "v minulosti havarované (dle inzerátu)", approx: "odhad trhu je orientační",
+      gone: "zmizelo z nabídky: prodáno, staženo nebo zdraženo", cheaper: "zlevněno: původně {p} Kč", serviceBook: "servisní knížka",
+      cebia: "prodejce přiložil prověrku Cebia", lowKm: "nízký roční nájezd", km: "km", kmYear: "km/rok", engine: "motor",
+      nafta: "nafta", benzin: "benzín", hybrid: "hybrid", elektro: "elektro", automat: "automat", manual: "manuál",
+      listed: "vloženo", foundAt: "nalezeno", descMore: "Celý popis", descLess: "Sbalit",
+      vinNone: "v inzerátu chybí — vyžádejte si ho od prodejce", copyVin: "Kopírovat VIN", checkKm: "Ověřit nájezd (MD ČR)",
+      msgHead: "Zpráva prodejci. Nabídka:", copy: "Kopírovat", offMarket: "−{p} % pod trhem",
+      legendPrice: "cena", legendMarket: "trh", marketLine: "Trh ≈ {m} Kč · {n} podobných ({b})", resale: "Přeprodej ≈", score: "Skóre nálezu:",
+      open: "Otevřít inzerát", msgBtn: "Zpráva prodejci",
+      emptyTab: "V této záložce zatím nic není. Zkuste jinou záložku nebo zrušte filtry.", emptyAll: "Zatím žádné nálezy. Objeví se po prvním hledání.",
+      copied: "Zkopírováno", selectManual: "Text je označený — zkopírujte ho ručně", loadError: "Nálezy se nepodařilo načíst. Obnovte stránku o něco později.", noData: "Žádná data",
+      bEngine: "stejný motor", bFuelGear: "stejné palivo a převodovka", bFuel: "stejné palivo", bModel: "stejný model", bKm: "±{k} tis. km", bNoFuel: "palivo neuvedeno",
+      wNoStk: "bez platné STK", wRepair: "vyžaduje opravu", wImport: "dovoz bez historie?", wLowKm: "podezřele nízký nájezd — ověřte VIN",
+      wChain: "síťový prodejce: ověřte, zda cena nezávisí na úvěru či doplňkových službách", wCheap: "podezřele levné — ověřte podvod a skryté vady",
+      hMove: "Stěhování / nové auto",
+      hints: {},
+    },
+  };
+  const WARN_KEYS = {
+    "без STK (техосмотра)": "wNoStk", "требует ремонта": "wRepair", "импорт без истории?": "wImport",
+    "подозрительно малый пробег — проверить по VIN": "wLowKm",
+    "сетевой салон: уточните, не зависит ли цена от кредита/доп. услуг": "wChain",
+    "слишком дёшево — проверить на мошенничество и скрытые дефекты": "wCheap",
+  };
+  const BASIS_KEYS = { "двигатель": "bEngine", "топливо+КПП": "bFuelGear", "топливо": "bFuel", "модель": "bModel" };
+  const STATUSES = ["new", "interested", "contacted", "rejected", "archived", "all"];
+
   const state = { deals: [], meta: null, tab: "new", model: "", seller: "", sort: "score", hot: false, openMsg: new Set(), openDesc: new Set() };
-  let local = {};
-  try { local = JSON.parse(localStorage.getItem("ah-status") || "{}") || {}; } catch (e) {}
-  function saveLocal() { try { localStorage.setItem("ah-status", JSON.stringify(local)); } catch (e) {} }
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => (n == null || isNaN(n)) ? "—" : Math.round(n).toLocaleString("cs-CZ").replace(/ /g, " ");
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  function detectLang() {
+    const saved = store.get("ah-lang", null);
+    if (saved && I18N[saved]) return saved;
+    for (const l of navigator.languages || [navigator.language || ""]) {
+      const c = String(l).slice(0, 2).toLowerCase();
+      if (c === "ru" || c === "be") return "ru";
+      if (c === "uk") return "uk";
+      if (c === "cs" || c === "sk") return "cs";
+      if (c === "en") return "en";
+    }
+    return "en";
+  }
+  let lang = detectLang();
+  const t = (key, vars) => {
+    let s = (I18N[lang] && I18N[lang][key]) ?? I18N.ru[key] ?? key;
+    if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace("{" + k + "}", v);
+    return s;
+  };
+
+  let local = store.get("ah-status", {}) || {};
+  Object.assign(state, store.get("ah-filters", {}) || {});
+  const saveFilters = () => store.set("ah-filters", { tab: state.tab, model: state.model, seller: state.seller, sort: state.sort, hot: state.hot });
   const statusOf = (d) => local[d._id] || (d.live === false ? "archived" : "new");
 
-  try { const saved = JSON.parse(localStorage.getItem("ah-filters") || "{}"); Object.assign(state, saved); } catch (e) {}
-  function saveFilters() {
-    try { localStorage.setItem("ah-filters", JSON.stringify({ tab: state.tab, model: state.model, seller: state.seller, sort: state.sort, hot: state.hot })); } catch (e) {}
+  function toast(text) {
+    const el = document.createElement("div"); el.className = "toast"; el.textContent = text; document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1800);
+  }
+  let noteKey = "";
+  function note(key) { noteKey = key || ""; const n = $("status"); n.hidden = !noteKey; n.textContent = noteKey ? t(noteKey) : ""; }
+
+  function applyStatic() {
+    document.documentElement.lang = lang;
+    document.title = t("appName");
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll(".lang").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    $("f-model").setAttribute("aria-label", t("allModels"));
+    $("f-seller").setAttribute("aria-label", t("allSellers"));
+    $("f-sort").setAttribute("aria-label", t("sortScore"));
+    if (noteKey) note(noteKey);
   }
 
-  function toast(text) {
-    const t = document.createElement("div"); t.className = "toast"; t.textContent = text; document.body.appendChild(t);
-    setTimeout(() => t.remove(), 1800);
+  function ago(runAt) {
+    const ts = Date.parse(String(runAt || "").replace(" ", "T"));
+    if (!ts) return "";
+    const min = Math.max(0, Math.round((Date.now() - ts) / 60000));
+    if (min < 2) return t("justNow");
+    if (min < 60) return t("minAgo", { n: min });
+    if (min < 48 * 60) return t("hAgo", { n: Math.round(min / 60) });
+    return t("dAgo", { n: Math.round(min / 1440) });
   }
-  function note(text) { const n = $("status"); n.hidden = !text; n.textContent = text || ""; }
 
   function renderRun() {
     const m = state.meta || {};
     $("r-time").textContent = m.run_at || "—";
+    $("r-ago").textContent = ago(m.run_at);
     $("r-checked").textContent = fmt(m.listings_checked);
     $("r-comps").textContent = fmt(m.comparables);
     $("r-deals").textContent = fmt(state.deals.filter((d) => ["new", "interested", "contacted"].includes(statusOf(d))).length);
@@ -232,10 +401,9 @@ footer { color: var(--muted); font-size: 12.5px; }
   function renderControls() {
     const counts = {};
     for (const d of state.deals) counts[statusOf(d)] = (counts[statusOf(d)] || 0) + 1;
-    $("tabs").innerHTML = STATUSES.map((s) => `<button class="tab" data-tab="${s.id}" aria-pressed="${state.tab === s.id}">${s.label}<span class="c">${s.id === "all" ? state.deals.length : (counts[s.id] || 0)}</span></button>`).join("");
+    $("tabs").innerHTML = STATUSES.map((s) => `<button class="tab" data-tab="${s}" aria-pressed="${state.tab === s}">${esc(t(s))}<span class="c">${s === "all" ? state.deals.length : (counts[s] || 0)}</span></button>`).join("");
     const models = [...new Set(state.deals.map((d) => d.model))].sort();
-    const sel = $("f-model");
-    sel.innerHTML = `<option value="">Все модели</option>` + models.map((m) => `<option ${m === state.model ? "selected" : ""}>${esc(m)}</option>`).join("");
+    $("f-model").innerHTML = `<option value="">${esc(t("allModels"))}</option>` + models.map((m) => `<option ${m === state.model ? "selected" : ""}>${esc(m)}</option>`).join("");
     $("f-seller").value = state.seller; $("f-sort").value = state.sort; $("f-hot").checked = state.hot;
   }
 
@@ -247,60 +415,69 @@ footer { color: var(--muted); font-size: 12.5px; }
     const key = {
       score: (d) => -d.score, discount: (d) => -d.discount, margin: (d) => -d.resale_margin,
       km: (d) => d.km, price: (d) => d.price, found: (d) => -(Date.parse((d.first_found_at || d.found_at || "").replace(" ", "T")) || 0),
-    }[state.sort];
+    }[state.sort] || ((d) => -d.score);
     return xs.sort((a, b) => key(a) - key(b));
   }
 
-  function cheaperBy(d) {
-    const h = d.price_history || [];
-    return h.length > 1 && h[0][1] > d.price ? h[0][1] - d.price : 0;
+  const cheaperBy = (d) => { const h = d.price_history || []; return h.length > 1 && h[0][1] > d.price ? h[0][1] - d.price : 0; };
+  const warnText = (w) => WARN_KEYS[w] ? t(WARN_KEYS[w]) : (w.startsWith("сетевой салон") ? t("wChain") : w);
+  function hotChip(h) {
+    if (h === "Переезд / новое авто") return `<span class="chip hot">${esc(t("hMove"))}</span>`;
+    const hint = (I18N[lang].hints || {})[h];
+    return `<span class="chip hot">${esc(h)}${hint ? ` <span class="hint">· ${esc(hint)}</span>` : ""}</span>`;
+  }
+  function basisText(b) {
+    const m = /^(двигатель|топливо\+КПП|топливо|модель), (\d{4}–\d{4}), ±(\d+) тыс\. км(, топливо не указано)?$/.exec(b || "");
+    if (!m) return b || "";
+    return [t(BASIS_KEYS[m[1]]), m[2], t("bKm", { k: m[3] })].concat(m[4] ? [t("bNoFuel")] : []).join(", ");
   }
 
   function vinRow(d) {
-    if (!d.vin) {
-      return `<div class="vin"><span class="vin-k">VIN</span><span class="vin-none">нет в объявлении — попросите у продавца</span></div>`;
-    }
-    return `<div class="vin"><span class="vin-k">VIN</span><code id="v-${d._id}">${esc(d.vin)}</code>
-      <button class="btn small" data-copyvin="${d._id}">Копировать VIN</button>
-      <a class="btn small" href="https://www.kontrolatachometru.cz/" target="_blank" rel="noopener">Проверить пробег (MD ČR)</a></div>`;
+    if (!d.vin) return `<div class="vin"><span class="vin-k">VIN</span><span class="vin-none">${esc(t("vinNone"))}</span></div>`;
+    return `<div class="vin"><span class="vin-k">VIN</span><code id="v-${esc(d._id)}">${esc(d.vin)}</code>
+      <button class="btn small" data-copyvin="${esc(d._id)}">${esc(t("copyVin"))}</button>
+      <a class="btn small" href="https://www.kontrolatachometru.cz/" target="_blank" rel="noopener">${esc(t("checkKm"))}</a></div>`;
   }
 
   function card(d) {
     const st = statusOf(d);
+    const id = esc(d._id);
     const pct = Math.max(0, Math.min(100, (d.price / (d.market * 1.15)) * 100));
-    const mk = Math.min(100, (1 / 1.15) * 100);
+    const mk = (1 / 1.15) * 100;
+    const sellerName = d.seller && d.seller !== "частник" ? ": " + esc(d.seller) : "";
     const chips = [
       `<span class="chip src">${d.source === "sauto" ? "Sauto.cz" : "Bazoš.cz"}</span>`,
-      `<span class="chip ${d.private ? "good" : ""}">${d.private ? "частник" : "дилер" + (d.seller && d.seller !== "частник" ? ": " + esc(d.seller) : "")}</span>`,
-      ...(d.hot || []).map((h) => `<span class="chip hot">${esc(h)}</span>`),
-      ...(d.warnings || []).map((w) => `<span class="chip warn">⚠ ${esc(w)}</span>`),
-      d.crashed_in_past ? `<span class="chip bad">отмечена как битая в прошлом</span>` : "",
-      (d.comps < 10 || /^модель|топливо не указано/.test(d.comps_basis || "")) ? `<span class="chip">оценка рынка приблизительная</span>` : "",
-      st === "archived" ? `<span class="chip bad">пропала из выдачи: продана, снята или подорожала</span>` : "",
-      cheaperBy(d) ? `<span class="chip good">подешевела: было ${fmt(d.price_history[0][1])} Kč</span>` : "",
-      d.service_book ? `<span class="chip">сервисная книжка</span>` : "",
-      d.cebia_report ? `<span class="chip good">есть отчёт Cebia от продавца</span>` : "",
-      d.km_per_year < 12000 ? `<span class="chip good">малый пробег в год</span>` : "",
+      `<span class="chip ${d.private ? "good" : ""}">${d.private ? esc(t("private")) : esc(t("dealer")) + sellerName}</span>`,
+      ...(d.hot || []).map(hotChip),
+      ...(d.warnings || []).map((w) => `<span class="chip warn">⚠ ${esc(warnText(w))}</span>`),
+      d.crashed_in_past ? `<span class="chip bad">${esc(t("crashed"))}</span>` : "",
+      (d.comps < 10 || /^модель|топливо не указано/.test(d.comps_basis || "")) ? `<span class="chip">${esc(t("approx"))}</span>` : "",
+      st === "archived" ? `<span class="chip bad">${esc(t("gone"))}</span>` : "",
+      cheaperBy(d) ? `<span class="chip good">${esc(t("cheaper", { p: fmt(d.price_history[0][1]) }))}</span>` : "",
+      d.service_book ? `<span class="chip">${esc(t("serviceBook"))}</span>` : "",
+      d.cebia_report ? `<span class="chip good">${esc(t("cebia"))}</span>` : "",
+      d.km_per_year < 12000 ? `<span class="chip good">${esc(t("lowKm"))}</span>` : "",
     ].join("");
     const facts = [
-      `<span><b>${fmt(d.km)}</b> км</span>`,
-      `<span><b>${fmt(d.km_per_year)}</b> км/год</span>`,
-      d.engine ? `<span>двигатель <b>${esc(d.engine)}</b></span>` : "",
-      d.power_kw ? `<span><b>${d.power_kw}</b> kW</span>` : "",
-      d.fuel ? `<span>${{ nafta: "дизель", benzin: "бензин", hybrid: "гибрид", elektro: "электро" }[d.fuel] || esc(d.fuel)}</span>` : "",
-      d.gearbox ? `<span>${d.gearbox === "automat" ? "автомат" : "механика"}</span>` : "",
+      `<span><b>${fmt(d.km)}</b> ${esc(t("km"))}</span>`,
+      `<span><b>${fmt(d.km_per_year)}</b> ${esc(t("kmYear"))}</span>`,
+      d.engine ? `<span>${esc(t("engine"))} <b>${esc(d.engine)}</b></span>` : "",
+      d.power_kw ? `<span><b>${esc(d.power_kw)}</b> kW</span>` : "",
+      d.fuel ? `<span>${esc(I18N[lang][d.fuel] || d.fuel)}</span>` : "",
+      d.gearbox ? `<span>${esc(t(d.gearbox === "automat" ? "automat" : "manual"))}</span>` : "",
       d.location ? `<span>📍 ${esc(d.location)}</span>` : "",
-      d.created ? `<span>выставлено <b>${esc(d.created.slice(0, 10))}</b></span>` : "",
-      d.first_found_at ? `<span>найдено <b>${esc(d.first_found_at)}</b></span>` : "",
+      d.created ? `<span>${esc(t("listed"))} <b>${esc(d.created.slice(0, 10))}</b></span>` : "",
+      d.first_found_at ? `<span>${esc(t("foundAt"))} <b>${esc(d.first_found_at)}</b></span>` : "",
     ].join("");
-    const desc = d.description ? `<div class="desc ${state.openDesc.has(d._id) ? "open" : ""}">${esc(d.description)}</div><button class="more" data-desc="${d._id}">${state.openDesc.has(d._id) ? "Свернуть" : "Описание целиком"}</button>` : "";
-    const msg = state.openMsg.has(d._id) ? `<div class="msg"><div class="msg-head"><span>Сообщение продавцу (чешский). Предложение: <b class="num">${fmt(d.offer)} Kč</b></span><button class="btn" data-copy="${d._id}">Копировать</button></div><span id="m-${d._id}">${esc(d.message_cz)}</span></div>` : "";
+    const open = state.openDesc.has(d._id);
+    const desc = d.description ? `<div class="desc ${open ? "open" : ""}" lang="cs">${esc(d.description)}</div><button class="more" data-desc="${id}">${esc(t(open ? "descLess" : "descMore"))}</button>` : "";
+    const msg = state.openMsg.has(d._id) ? `<div class="msg"><div class="msg-head"><span>${esc(t("msgHead"))} <b class="num">${fmt(d.offer)} Kč</b></span><button class="btn" data-copy="${id}">${esc(t("copy"))}</button></div><span id="m-${id}" lang="cs">${esc(d.message_cz)}</span></div>` : "";
     const found = Date.parse((d.first_found_at || "").replace(" ", "T"));
     const fresh = st === "new" && found && Date.now() - found < 24 * 3600 * 1000;
     return `<article class="card ${fresh ? "is-new" : ""}">
       <div>
         <div class="head"><span class="plate"><span class="eu">CZ</span><span class="t">${esc(d.year)}</span></span><span class="chip">${esc(d.model)}</span></div>
-        <div class="title"><a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.title)}</a></div>
+        <div class="title"><a href="${esc(d.url)}" target="_blank" rel="noopener" lang="cs">${esc(d.title)}</a></div>
         <div class="facts">${facts}</div>
         <div class="chips">${chips}</div>
         ${vinRow(d)}
@@ -308,18 +485,18 @@ footer { color: var(--muted); font-size: 12.5px; }
       </div>
       <div class="tag">
         <div class="price">${fmt(d.price)} <small>Kč</small></div>
-        <span class="disc">−${Math.round(d.discount * 100)} % от рынка</span>
+        <span class="disc">${esc(t("offMarket", { p: Math.round(d.discount * 100) }))}</span>
         <div class="meter" aria-hidden="true"><i style="width:${pct}%"></i><b style="left:${mk}%"></b></div>
-        <div class="legend"><span>цена</span><span>рынок</span></div>
-        <div class="mkt">Рынок ≈ <span class="num">${fmt(d.market)} Kč</span> · ${d.comps} похожих (${esc(d.comps_basis)})</div>
-        <div class="margin">Перепродажа ≈ <span class="num">+${fmt(d.resale_margin)} Kč</span></div>
-        <div class="score">Оценка находки: <span class="num">${d.score}</span></div>
+        <div class="legend"><span>${esc(t("legendPrice"))}</span><span>${esc(t("legendMarket"))}</span></div>
+        <div class="mkt">${esc(t("marketLine", { m: fmt(d.market), n: d.comps, b: basisText(d.comps_basis) }))}</div>
+        <div class="margin">${esc(t("resale"))} <span class="num">+${fmt(d.resale_margin)} Kč</span></div>
+        <div class="score">${esc(t("score"))} <span class="num">${esc(d.score)}</span></div>
       </div>
       <div class="actions">
-        <a class="btn primary" href="${esc(d.url)}" target="_blank" rel="noopener">Открыть объявление</a>
-        <button class="btn" data-msg="${d._id}" aria-expanded="${state.openMsg.has(d._id)}">Сообщение продавцу</button>
+        <a class="btn primary" href="${esc(d.url)}" target="_blank" rel="noopener">${esc(t("open"))}</a>
+        <button class="btn" data-msg="${id}" aria-expanded="${state.openMsg.has(d._id)}">${esc(t("msgBtn"))}</button>
         <span class="spacer"></span>
-        ${["interested", "contacted", "rejected"].map((s) => `<button class="btn" data-set="${s}" data-id="${d._id}" aria-pressed="${st === s}">${{ interested: "Интересно", contacted: "Связался", rejected: "Не подходит" }[s]}</button>`).join("")}
+        ${["interested", "contacted", "rejected"].map((s) => `<button class="btn" data-set="${s}" data-id="${id}" aria-pressed="${st === s}">${esc(t(s))}</button>`).join("")}
       </div>
       ${msg}
     </article>`;
@@ -328,22 +505,23 @@ footer { color: var(--muted); font-size: 12.5px; }
   function render() {
     renderRun(); renderControls();
     const xs = visible();
-    $("list").innerHTML = xs.length ? xs.map(card).join("") : `<div class="empty">${state.deals.length ? "В этой вкладке пока пусто. Попробуйте другую вкладку или снимите фильтры." : "Находок пока нет. Они появятся после первого поиска."}</div>`;
+    $("list").innerHTML = xs.length ? xs.map(card).join("") : `<div class="empty">${esc(t(state.deals.length ? "emptyTab" : "emptyAll"))}</div>`;
   }
 
   document.addEventListener("click", async (e) => {
-    const t = e.target.closest("button"); if (!t) return;
-    if (t.dataset.tab) { state.tab = t.dataset.tab; saveFilters(); render(); }
-    else if (t.dataset.msg) { const id = t.dataset.msg; state.openMsg.has(id) ? state.openMsg.delete(id) : state.openMsg.add(id); render(); }
-    else if (t.dataset.desc) { const id = t.dataset.desc; state.openDesc.has(id) ? state.openDesc.delete(id) : state.openDesc.add(id); render(); }
-    else if (t.dataset.copy || t.dataset.copyvin) {
-      const el = t.dataset.copy ? $("m-" + t.dataset.copy) : $("v-" + t.dataset.copyvin);
-      try { await navigator.clipboard.writeText(el.textContent); toast("Сообщение скопировано"); }
-      catch (err) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Текст выделен — скопируйте вручную"); }
-    } else if (t.dataset.set) {
-      const id = t.dataset.id;
-      if (local[id] === t.dataset.set) delete local[id]; else local[id] = t.dataset.set;
-      saveLocal(); render();
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.lang) { lang = b.dataset.lang; store.set("ah-lang", lang); applyStatic(); render(); }
+    else if (b.dataset.tab) { state.tab = b.dataset.tab; saveFilters(); render(); }
+    else if (b.dataset.msg) { const id = b.dataset.msg; state.openMsg.has(id) ? state.openMsg.delete(id) : state.openMsg.add(id); render(); }
+    else if (b.dataset.desc) { const id = b.dataset.desc; state.openDesc.has(id) ? state.openDesc.delete(id) : state.openDesc.add(id); render(); }
+    else if (b.dataset.copy || b.dataset.copyvin) {
+      const el = b.dataset.copy ? $("m-" + b.dataset.copy) : $("v-" + b.dataset.copyvin);
+      try { await navigator.clipboard.writeText(el.textContent); toast(t("copied")); }
+      catch (err) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast(t("selectManual")); }
+    } else if (b.dataset.set) {
+      const id = b.dataset.id;
+      if (local[id] === b.dataset.set) delete local[id]; else local[id] = b.dataset.set;
+      store.set("ah-status", local); render();
     }
   });
   $("f-model").addEventListener("change", (e) => { state.model = e.target.value; saveFilters(); render(); });
@@ -351,11 +529,10 @@ footer { color: var(--muted); font-size: 12.5px; }
   $("f-sort").addEventListener("change", (e) => { state.sort = e.target.value; saveFilters(); render(); });
   $("f-hot").addEventListener("change", (e) => { state.hot = e.target.checked; saveFilters(); render(); });
 
-  render();
-
-  (async () => {
+  async function load() {
     try {
-      const [dr, mr] = await Promise.all([fetch("data/deals.json", { cache: "no-store" }), fetch("data/meta.json", { cache: "no-store" })]);
+      const bust = "?t=" + Math.floor(Date.now() / 60000);
+      const [dr, mr] = await Promise.all([fetch("data/deals.json" + bust, { cache: "no-store" }), fetch("data/meta.json" + bust, { cache: "no-store" })]);
       if (!dr.ok) throw new Error(dr.status);
       const data = await dr.json();
       state.meta = mr.ok ? await mr.json() : null;
@@ -364,10 +541,16 @@ footer { color: var(--muted); font-size: 12.5px; }
       note("");
       render();
     } catch (err) {
-      note("Не удалось загрузить находки. Обновите страницу чуть позже.");
-      $("list").innerHTML = `<div class="empty">Нет данных.</div>`;
+      if (!state.deals.length) { note("loadError"); $("list").innerHTML = `<div class="empty">${esc(t("noData"))}</div>`; }
     }
-  })();
+  }
+
+  applyStatic();
+  render();
+  load();
+  setInterval(load, 10 * 60 * 1000);
+  setInterval(renderRun, 60 * 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 })();
 </script>
 
