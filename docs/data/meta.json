@@ -1,13 +1,13 @@
 {
- "run_at": "2026-11-21 20:32",
- "seconds": 511,
- "requests": 507,
+ "run_at": "2026-11-22 09:14",
+ "seconds": 508,
+ "requests": 502,
  "errors": 0,
- "listings_checked": 17573,
- "comparables": 31793,
- "deals": 350,
- "new_deals": 19,
- "with_phrases": 26,
+ "listings_checked": 17567,
+ "comparables": 31766,
+ "deals": 340,
+ "new_deals": 9,
+ "with_phrases": 28,
  "dropped_red_flags": {
   "битая": 8,
   "цена только при кредите": 9,
@@ -15,9 +15,9 @@
   "лизинг/аренда": 1,
   "проблема с мотором": 2
  },
- "new_added": 19,
+ "new_added": 9,
  "cheaper": 1,
- "live": 350,
- "total": 421,
+ "live": 340,
+ "total": 430,
  "telegram_url": ""
 }
