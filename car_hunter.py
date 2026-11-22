@@ -194,8 +194,11 @@ def match_model(title, models):
 
 # ---------------------------------------------------------------- sauto
 
-def sauto_search(http, params, max_items=6000):
+def sauto_search(http, params, max_items=12000, status=None):
+    """All listings for the query. status (dict) gets "complete": every page arrived."""
     offset, total, items = 0, None, []
+    if status is not None:
+        status["complete"] = False
     while total is None or offset < total:
         q = urllib.parse.urlencode(dict(params, limit=500, offset=offset, category_id=838,
                                         operating_lease="false", condition_seo="ojete"))
@@ -208,6 +211,8 @@ def sauto_search(http, params, max_items=6000):
             break
         items += page
         offset += len(page)
+    if status is not None:
+        status["complete"] = total is not None and offset >= total
     return items
 
 
@@ -252,13 +257,17 @@ def sauto_row(it, model):
 
 
 def sauto_fetch_model(http, model, price_cap):
-    out = []
+    """Rows of every Sauto listing of the model, and whether all pages arrived."""
+    out, seen, complete = [], set(), True
     for seo in model["sauto"]:
-        for it in sauto_search(http, {"manufacturer_model_seo": seo, "price_to": price_cap}):
+        st = {}
+        for it in sauto_search(http, {"manufacturer_model_seo": seo, "price_to": price_cap}, status=st):
             row = sauto_row(it, model)
-            if row:
+            if row and row["id"] not in seen:  # pages can overlap when new ads arrive mid-fetch
+                seen.add(row["id"])
                 out.append(row)
-    return out
+        complete = complete and st.get("complete", False)
+    return out, complete
 
 
 def sauto_phrase_sweep(http, phrase, cfg, seo_map):
@@ -354,11 +363,12 @@ def bazos_page(http, path, query, cfg, models):
     return rows, len(blocks) >= 20
 
 
-def bazos_fetch_model(http, model, cfg):
+def bazos_fetch_model(http, model, cfg, pages=None, band=None):
     cat, query = model["bazos"]
     rows = []
-    for page in range(cfg["bazos_pages"]):
-        got, more = bazos_page(http, f"/{cat}/" + (f"{page * 40}/" if page else ""), query, cfg, [model])
+    page_cfg = dict(cfg, price_min=band[0], price_max=band[1]) if band else cfg
+    for page in range(pages or cfg["bazos_pages"]):
+        got, more = bazos_page(http, f"/{cat}/" + (f"{page * 40}/" if page else ""), query, page_cfg, [model])
         rows += got
         if not more:
             break
@@ -453,31 +463,24 @@ def parse_km(title, desc):
 
 # ---------------------------------------------------------------- market estimate
 
-def estimate_market(row, comps_by_model, gens_by_model):
-    """Median asking price of comparable Sauto listings, from the tightest match that has enough.
-    With the fuel unknown (some Bazos ads), the cheapest fuel group's estimate is used: a petrol
-    Yaris must not be priced against hybrids."""
-    if not row.get("fuel"):
-        found = [_estimate(dict(row, fuel=f), comps_by_model, gens_by_model) for f in ("benzin", "nafta", "hybrid")]
-        found = [e for e in found if e[0]]
-        if found:
-            m = min(found, key=lambda e: e[0])
-            return m[0], m[1], m[2] + ", топливо не указано"
-        return None, 0, ""
-    return _estimate(row, comps_by_model, gens_by_model)
+TIERS = [
+    # label, years ±, km window, same fuel, same gearbox, same engine
+    ("двигатель", 1, lambda k: max(25000, 0.20 * k), True, True, True),
+    ("топливо+КПП", 1, lambda k: max(25000, 0.20 * k), True, True, False),
+    ("топливо", 1, lambda k: max(35000, 0.30 * k), True, False, False),
+    ("модель", 2, lambda k: max(50000, 0.40 * k), True, False, False),
+]
+MARKET_NEED = {"двигатель": 6, "топливо+КПП": 8, "топливо": 10, "модель": 12}
 
 
-def _estimate(row, comps_by_model, gens_by_model):
-    pool = comps_by_model.get(row["model"], [])
-    bounds = gens_by_model.get(row["model"], [])
+def select_comps(row, pool, bounds, need):
+    """Comparable listings from the tightest tier that has enough of them.
+    need: {tier label: minimum count}. Returns (comps, basis text) or ([], "")."""
     y, k = row["year"], row["km"]
     gen, ambiguous = generation(y, bounds)
-    if ambiguous:
-        # First year of a new generation: both generations were sold that year, so compare
-        # with the older one only (cheaper, i.e. a conservative market price).
-        years = {y - 2, y - 1}
-    else:
-        years = None
+    # First year of a new generation: both generations were sold that year, so compare
+    # with the older one only (cheaper, i.e. a conservative estimate).
+    years = {y - 2, y - 1} if ambiguous else None
 
     def same_gen(c):
         if years is not None:
@@ -485,26 +488,116 @@ def _estimate(row, comps_by_model, gens_by_model):
         cg, camb = generation(c["year"], bounds)
         return cg == gen and not camb
 
-    tiers = [
-        ("двигатель", 1, max(25000, 0.20 * k), True, True, True, 6),
-        ("топливо+КПП", 1, max(25000, 0.20 * k), True, True, False, 8),
-        ("топливо", 1, max(35000, 0.30 * k), True, False, False, 10),
-        ("модель", 2, max(50000, 0.40 * k), True, False, False, 12),
-    ]
-    for label, dy, dk, same_fuel, same_gear, same_engine, need in tiers:
+    for label, dy, kmw, same_fuel, same_gear, same_engine in TIERS:
         if same_engine and not row.get("engine"):
             continue
-        prices = [c["price"] for c in pool
-                  if c["id"] != row["id"] and same_gen(c)
-                  and (years is not None or abs(c["year"] - y) <= dy) and abs(c["km"] - k) <= dk
-                  and (not same_fuel or not row["fuel"] or c["fuel"] == row["fuel"])
-                  and (not same_gear or not row["gearbox"] or c["gearbox"] == row["gearbox"])
-                  and (not same_engine or c.get("engine") == row["engine"])
-                  and c.get("perf", False) == row.get("perf", False)]
-        if len(prices) >= need:
+        dk = kmw(k)
+        comps = [c for c in pool
+                 if c["id"] != row["id"] and same_gen(c)
+                 and (years is not None or abs(c["year"] - y) <= dy) and abs(c["km"] - k) <= dk
+                 and (not same_fuel or not row["fuel"] or c.get("fuel") == row["fuel"])
+                 and (not same_gear or not row["gearbox"] or c.get("gearbox") == row["gearbox"])
+                 and (not same_engine or c.get("engine") == row["engine"])
+                 and c.get("perf", False) == row.get("perf", False)]
+        if len(comps) >= need.get(label, 99):
             yr = f"{min(years)}–{max(years)}" if years else f"{y - dy}–{y + dy}"
-            return int(statistics.median(prices)), len(prices), f"{label}, {yr}, ±{int(dk / 1000)} тыс. км"
-    return None, 0, ""
+            return comps, f"{label}, {yr}, ±{int(dk / 1000)} тыс. км"
+    return [], ""
+
+
+def with_fuel_fallback(row, fn):
+    """With the fuel unknown (some Bazos ads) use the cheapest fuel group's result:
+    a petrol Yaris must not be priced against hybrids."""
+    if row.get("fuel"):
+        return fn(row)
+    found = [fn(dict(row, fuel=f)) for f in ("benzin", "nafta", "hybrid")]
+    found = [f for f in found if f]
+    if not found:
+        return None
+    best = min(found, key=lambda f: f[0])
+    return best[:-1] + (best[-1] + ", топливо не указано",)
+
+
+def estimate_market(row, comps_by_model, gens_by_model):
+    """Median asking price of comparable listings (Sauto + Bazos, dealers and private)."""
+    pool, bounds = comps_by_model.get(row["model"], []), gens_by_model.get(row["model"], [])
+
+    def fn(r):
+        comps, basis = select_comps(r, pool, bounds, MARKET_NEED)
+        return (int(statistics.median(c["price"] for c in comps)), len(comps), basis) if comps else None
+
+    return with_fuel_fallback(row, fn) or (None, 0, "")
+
+
+def quantile(values, q):
+    v = sorted(values)
+    if not v:
+        return None
+    i = (len(v) - 1) * q
+    lo, hi = int(i), min(int(i) + 1, len(v) - 1)
+    return v[lo] + (v[hi] - v[lo]) * (i - lo)
+
+
+def estimate_resale(row, comps_by_model, sold_by_model, gens_by_model, cfg):
+    """What the car realistically sells for as a private sale.
+    1) "sold": last asking price of comparable Sauto ads that disappeared after 1–60 days
+       (tracked by history.py) minus 3 % haggling — needs 5+ such sales;
+    2) "private": asking prices of comparable private-seller ads (Sauto + Bazos):
+       quick sale = lower quartile − 3 %, typical = median − 5 %;
+    3) "estimate": market median × 0.82 / 0.88 when there is too little data."""
+    bounds = gens_by_model.get(row["model"], [])
+    need5 = {label: 5 for label, *_ in TIERS}
+
+    def from_sold(r):
+        comps, basis = select_comps(r, sold_by_model.get(r["model"], []), bounds, need5)
+        if not comps:
+            return None
+        prices = [c["price"] for c in comps]
+        days = statistics.median(c["days"] for c in comps)
+        return (quantile(prices, 0.5) * 0.97, quantile(prices, 0.25) * 0.97, len(comps), int(days), basis)
+
+    def from_private(r):
+        private = [c for c in comps_by_model.get(r["model"], []) if c.get("private")]
+        comps, basis = select_comps(r, private, bounds, need5)
+        if not comps:
+            return None
+        prices = [c["price"] for c in comps]
+        return (quantile(prices, 0.5) * 0.95, quantile(prices, 0.25) * 0.97, len(comps), None, basis)
+
+    for kind, fn in (("sold", from_sold), ("private", from_private)):
+        got = with_fuel_fallback(row, fn)
+        if got:
+            typical, quick, n, days, basis = got
+            break
+    else:
+        kind, typical, quick, n, days, basis = "estimate", row["market"] * 0.88, row["market"] * 0.82, 0, None, ""
+    quick = min(quick, typical)
+    costs = cfg.get("resale_costs", 6000)
+    r100 = lambda v: int(round(v / 100.0) * 100)
+    return {
+        "resale_basis": kind, "resale_n": n, "resale_days": days, "resale_comps_basis": basis,
+        "resale_quick": r100(quick), "resale_typical": r100(typical),
+        "profit_quick": r100(quick - row["price"] - costs), "profit_typical": r100(typical - row["price"] - costs),
+    }
+
+
+def load_sold(history_dir, max_days):
+    """Comparable "sold" listings from history.py: ads that disappeared after 1..max_days days."""
+    import os
+    path = os.path.join(history_dir or "", "sold.json")
+    if not history_dir or not os.path.exists(path):
+        return {}, 0
+    data = json.load(open(path, encoding="utf-8"))
+    cols = data["columns"]
+    by_model, n = {}, 0
+    for item in data["items"]:
+        d = dict(zip(cols, item))
+        if not (1 <= d["days"] <= max_days) or d["price"] < 10000:
+            continue
+        d["id"] = "sold:" + str(d["id"])
+        by_model.setdefault(d["model"], []).append(d)
+        n += 1
+    return by_model, n
 
 
 # ---------------------------------------------------------------- scoring
@@ -525,6 +618,8 @@ def score(row, cfg):
     if row["comps"] < 10 or row["comps_basis"].startswith("модель") or "топливо не указано" in row["comps_basis"]:
         pts -= 5  # rough market estimate
     pts -= 6 * len(row["warnings"])
+    if "profit_typical" in row:
+        pts += max(-6, min(8, row["profit_typical"] / 5000))
     if row["discount"] > 0.5:
         pts -= 12  # too good to be true: verify first
     row["score"] = round(pts, 1)
@@ -554,6 +649,7 @@ def main():
     ap.add_argument("--models", help="comma-separated subset of model names (debug)")
     ap.add_argument("--no-bazos", action="store_true")
     ap.add_argument("--no-phrases", action="store_true")
+    ap.add_argument("--history", help="folder with history.py state (sold.json) for real sale prices")
     args = ap.parse_args()
 
     cfg = json.load(open(args.config, encoding="utf-8"))
@@ -568,8 +664,9 @@ def main():
     seo_map = {seo: m for m in models for seo in m["sauto"]}
     chains = [norm(c) for c in cfg.get("chain_dealers", [])]
 
-    # 1. Market data (Sauto) and newest Bazos ads, model by model.
-    comps_by_model, pool = {}, {}
+    # 1. Market data (Sauto + Bazos) and newest Bazos ads, model by model.
+    comps_by_model, pool, sauto_all, complete_models = {}, {}, [], []
+    sold_by_model, sold_total = load_sold(args.history, cfg.get("sold_max_days", 60))
 
     def add(rows):
         for r in rows:
@@ -579,12 +676,21 @@ def main():
                 pool[r["id"]] = r
 
     for model in models:
-        rows = sauto_fetch_model(http, model, int(cfg["price_max"] * 2.5))
-        comps_by_model[model["name"]] = [r for r in rows if r["price"] >= 10000 and (r["km"] >= 1000 or r["year"] >= YEAR_NOW - 1)]
-        bz = [] if args.no_bazos else bazos_fetch_model(http, model, cfg)
-        print(f"{model['name']:<18} sauto {len(rows):>5}  bazos {len(bz):>3}", file=sys.stderr)
-        add([r for r in comps_by_model[model["name"]] if cfg["price_min"] <= r["price"] <= cfg["price_max"]])
-        add(bz)
+        rows, complete = sauto_fetch_model(http, model, int(cfg["price_max"] * 2.5))
+        sauto_all += rows
+        if complete:
+            complete_models.append(model["name"])
+        ok = lambda r: r["price"] >= 10000 and (r["km"] >= 1000 or r["year"] >= YEAR_NOW - 1)
+        comps_by_model[model["name"]] = [r for r in rows if ok(r)]
+        bz = [] if args.no_bazos else bazos_fetch_model(
+            http, model, cfg, pages=max(cfg["bazos_pages"], cfg.get("bazos_comp_pages", 0)),
+            band=(int(cfg["price_min"] * 0.5), int(cfg["price_max"] * 2)))
+        bz_comps = [r for r in bz if r["year"] and r["km"] and ok(r)]
+        comps_by_model[model["name"]] += bz_comps
+        print(f"{model['name']:<18} sauto {len(rows):>5}{'' if complete else ' (не полностью)'}  bazos {len(bz):>3} "
+              f"(для сравнения {len(bz_comps)})  продажи {len(sold_by_model.get(model['name'], []))}", file=sys.stderr)
+        add([r for r in comps_by_model[model["name"]] if r["source"] == "sauto" and cfg["price_min"] <= r["price"] <= cfg["price_max"]])
+        add([r for r in bz if cfg["price_min"] <= r["price"] <= cfg["price_max"]])
 
     # 2. Hot phrases across the whole market.
     if not args.no_phrases:
@@ -667,9 +773,10 @@ def main():
             continue  # not cheap enough, or so cheap it is almost surely fake, a lease takeover or a wreck
         if r["discount"] > 0.5:
             r["warnings"].append("слишком дёшево — проверить на мошенничество и скрытые дефекты")
+        r.update(estimate_resale(r, comps_by_model, sold_by_model, gens, cfg))
         score(r, cfg)
         r["offer"] = offer_price(r)
-        r["resale_margin"] = int(r["market"] * 0.92 - r["price"])
+        r["resale_margin"] = r["profit_typical"]
         r["message_cz"] = message_cz(r)
         r["new"] = r["id"] not in seen
         r["found_at"] = NOW.strftime("%Y-%m-%d %H:%M")
@@ -695,12 +802,20 @@ def main():
         "listings_checked": len(candidates), "comparables": sum(len(v) for v in comps_by_model.values()),
         "deals": len(deals), "new_deals": sum(d["new"] for d in deals),
         "with_phrases": sum(bool(d["hot"]) for d in deals), "dropped_red_flags": dropped,
+        "sold_tracked": sold_total, "resale_from_sales": sum(d["resale_basis"] == "sold" for d in deals),
+        "resale_costs": cfg.get("resale_costs", 6000),
     }
+    # Every Sauto listing, for history.py (detects sold cars: ads that disappear).
+    cols = ["id", "model", "year", "km", "fuel", "gearbox", "engine", "perf", "private", "created", "price"]
+    json.dump({"complete_models": complete_models, "columns": cols,
+               "items": [[int(r["id"].split(":", 1)[1]) if k == "id" else r.get(k) for k in cols] for r in sauto_all]},
+              open(f"{args.out}/sauto_listings.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     json.dump({"stats": stats, "deals": deals}, open(f"{args.out}/deals.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(json.dumps(stats, ensure_ascii=False), file=sys.stderr)
     for d in deals[:30]:
         print(f"{d['score']:>5} {'NEW' if d['new'] else '   '} {d['source']:<5} {d['model']:<15} {d['year']} "
               f"{d['km']:>7,} km {d['price']:>8,} Kč  рынок {d['market']:>8,} (-{d['discount']:.0%}, n={d['comps']})  "
+              f"продать {d['resale_quick']:,}–{d['resale_typical']:,} ({d['resale_basis']}, n={d['resale_n']}) чистыми {d['profit_quick']:,}…{d['profit_typical']:,}  "
               f"{'+'.join(d['hot'])}  {'⚠ ' + ','.join(d['warnings']) if d['warnings'] else ''}\n      {d['url']}")
 
 

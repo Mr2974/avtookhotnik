@@ -153,6 +153,14 @@ footer { color: var(--muted); font-size: 12.5px; }
 .lang[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
 .lang:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .run .sub { font-size: 12px; color: var(--muted); }
+.resale { display: grid; gap: 3px; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
+.rs-k { font-size: 12px; color: var(--muted); letter-spacing: .02em; }
+.rs-v { font-size: 18px; font-weight: 600; line-height: 1.2; }
+.rs-v small { font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.rs-q { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rs-b { font-size: 12px; color: var(--muted); }
+.resale.sold .rs-b { color: var(--good); font-weight: 500; }
+.margin.neg .num { color: var(--bad); }
 .chip .hint { opacity: .75; font-weight: 400; }
 </style>
 </head>
@@ -176,7 +184,7 @@ footer { color: var(--muted); font-size: 12.5px; }
   <section class="run" id="run">
     <div><span class="k" data-i18n="lastRun">Последний поиск</span><span class="v" id="r-time">—</span><span class="sub" id="r-ago"></span></div>
     <div><span class="k" data-i18n="checked">Проверено объявлений</span><span class="v" id="r-checked">—</span></div>
-    <div><span class="k" data-i18n="compsCount">Для сравнения цен</span><span class="v" id="r-comps">—</span></div>
+    <div><span class="k" data-i18n="compsCount">Для сравнения цен</span><span class="v" id="r-comps">—</span><span class="sub" id="r-sold"></span></div>
     <div><span class="k" data-i18n="liveCount">Актуальных находок</span><span class="v accent" id="r-deals">—</span></div>
   </section>
 
@@ -235,6 +243,7 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "без STK (техосмотра)", wRepair: "требует ремонта", wImport: "импорт без истории?", wLowKm: "подозрительно малый пробег — проверить по VIN",
       wChain: "сетевой салон: уточните, не зависит ли цена от кредита или доп. услуг", wCheap: "слишком дёшево — проверить на мошенничество и скрытые дефекты",
       hMove: "Переезд / новое авто",
+      sellReal: "Реально продать", sellQuick: "быстро", sellTypical: "обычно", basisSold: "по {n} проданным похожим, уходят за ~{d} дн.", basisSoldN: "по {n} проданным похожим", basisPrivate: "по {n} объявлениям частников, с учётом торга", basisEstimate: "грубая оценка: мало данных", net: "Чистыми после расходов ~{c} Kč:", soldTracked: "отслежено продаж: {n}",
       hints: { "Rychlé jednání": "быстрое решение", "Při rychlém jednání sleva": "скидка при быстрой сделке", "Potřebuji prodat": "нужно продать", "Dohoda možná": "возможен торг", "Rodinné auto": "семейный автомобиль", "Dědictví": "наследство" },
     },
     en: {
@@ -262,6 +271,7 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "no valid STK (inspection)", wRepair: "needs repair", wImport: "import without history?", wLowKm: "suspiciously low mileage — check the VIN",
       wChain: "dealer chain: ask whether the price depends on financing or extras", wCheap: "too cheap — check for fraud and hidden defects",
       hMove: "Moving / new car",
+      sellReal: "Realistic sale price", sellQuick: "quick", sellTypical: "typical", basisSold: "from {n} similar cars sold, they sell in ~{d} days", basisSoldN: "from {n} similar cars sold", basisPrivate: "from {n} private-seller ads, after haggling", basisEstimate: "rough estimate: little data", net: "Net after ~{c} Kč costs:", soldTracked: "sales tracked: {n}",
       hints: { "Rychlé jednání": "quick deal", "Při rychlém jednání sleva": "discount for a quick deal", "Potřebuji prodat": "need to sell", "Dohoda možná": "negotiable", "Rodinné auto": "family car", "Dědictví": "inheritance" },
     },
     uk: {
@@ -289,6 +299,7 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "без STK (техогляду)", wRepair: "потребує ремонту", wImport: "імпорт без історії?", wLowKm: "підозріло малий пробіг — перевірте VIN",
       wChain: "мережевий салон: уточніть, чи не залежить ціна від кредиту або дод. послуг", wCheap: "занадто дешево — перевірте на шахрайство і приховані дефекти",
       hMove: "Переїзд / нове авто",
+      sellReal: "Реально продати", sellQuick: "швидко", sellTypical: "зазвичай", basisSold: "за {n} проданими схожими, продаються за ~{d} дн.", basisSoldN: "за {n} проданими схожими", basisPrivate: "за {n} оголошеннями приватних продавців, з урахуванням торгу", basisEstimate: "груба оцінка: мало даних", net: "Чистими після витрат ~{c} Kč:", soldTracked: "відстежено продажів: {n}",
       hints: { "Rychlé jednání": "швидке рішення", "Při rychlém jednání sleva": "знижка за швидку угоду", "Potřebuji prodat": "потрібно продати", "Dohoda možná": "можливий торг", "Rodinné auto": "сімейне авто", "Dědictví": "спадщина" },
     },
     cs: {
@@ -316,6 +327,7 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "bez platné STK", wRepair: "vyžaduje opravu", wImport: "dovoz bez historie?", wLowKm: "podezřele nízký nájezd — ověřte VIN",
       wChain: "síťový prodejce: ověřte, zda cena nezávisí na úvěru či doplňkových službách", wCheap: "podezřele levné — ověřte podvod a skryté vady",
       hMove: "Stěhování / nové auto",
+      sellReal: "Reálně prodáte za", sellQuick: "rychle", sellTypical: "běžně", basisSold: "podle {n} prodaných podobných vozů, prodají se za ~{d} dní", basisSoldN: "podle {n} prodaných podobných vozů", basisPrivate: "podle {n} inzerátů soukromníků, po smlouvání", basisEstimate: "hrubý odhad: málo dat", net: "Čistý zisk po nákladech ~{c} Kč:", soldTracked: "sledováno prodejů: {n}",
       hints: {},
     },
   };
@@ -395,6 +407,7 @@ footer { color: var(--muted); font-size: 12.5px; }
     $("r-ago").textContent = ago(m.run_at);
     $("r-checked").textContent = fmt(m.listings_checked);
     $("r-comps").textContent = fmt(m.comparables);
+    $("r-sold").textContent = m.sold_tracked != null ? t("soldTracked", { n: fmt(m.sold_tracked) }) : "";
     $("r-deals").textContent = fmt(state.deals.filter((d) => ["new", "interested", "contacted"].includes(statusOf(d))).length);
   }
 
@@ -413,7 +426,7 @@ footer { color: var(--muted); font-size: 12.5px; }
     if (state.seller) xs = xs.filter((d) => (state.seller === "private") === !!d.private);
     if (state.hot) xs = xs.filter((d) => (d.hot || []).length);
     const key = {
-      score: (d) => -d.score, discount: (d) => -d.discount, margin: (d) => -d.resale_margin,
+      score: (d) => -d.score, discount: (d) => -d.discount, margin: (d) => -(d.profit_typical ?? d.resale_margin),
       km: (d) => d.km, price: (d) => d.price, found: (d) => -(Date.parse((d.first_found_at || d.found_at || "").replace(" ", "T")) || 0),
     }[state.sort] || ((d) => -d.score);
     return xs.sort((a, b) => key(a) - key(b));
@@ -437,6 +450,24 @@ footer { color: var(--muted); font-size: 12.5px; }
     return `<div class="vin"><span class="vin-k">VIN</span><code id="v-${esc(d._id)}">${esc(d.vin)}</code>
       <button class="btn small" data-copyvin="${esc(d._id)}">${esc(t("copyVin"))}</button>
       <a class="btn small" href="https://www.kontrolatachometru.cz/" target="_blank" rel="noopener">${esc(t("checkKm"))}</a></div>`;
+  }
+
+  function resaleBlock(d) {
+    if (d.resale_typical == null) {
+      return `<div class="margin">${esc(t("resale"))} <span class="num">+${fmt(d.resale_margin)} Kč</span></div>`;
+    }
+    const basis = d.resale_basis === "sold"
+      ? t(d.resale_days != null ? "basisSold" : "basisSoldN", { n: d.resale_n, d: d.resale_days })
+      : d.resale_basis === "private" ? t("basisPrivate", { n: d.resale_n }) : t("basisEstimate");
+    const sign = (v) => (v >= 0 ? "+" : "−") + fmt(Math.abs(v));
+    const costs = (state.meta && state.meta.resale_costs) || 6000;
+    return `<div class="resale ${d.resale_basis}">
+        <div class="rs-k">${esc(t("sellReal"))}</div>
+        <div class="rs-v num">${fmt(d.resale_quick)} – ${fmt(d.resale_typical)} <small>Kč</small></div>
+        <div class="rs-q">${esc(t("sellQuick"))} ${fmt(d.resale_quick)} · ${esc(t("sellTypical"))} ${fmt(d.resale_typical)}</div>
+        <div class="rs-b">${esc(basis)}</div>
+        <div class="margin ${d.profit_typical < 0 ? "neg" : ""}">${esc(t("net", { c: fmt(costs) }))} <span class="num">${sign(d.profit_quick)} … ${sign(d.profit_typical)} Kč</span></div>
+      </div>`;
   }
 
   function card(d) {
@@ -489,7 +520,7 @@ footer { color: var(--muted); font-size: 12.5px; }
         <div class="meter" aria-hidden="true"><i style="width:${pct}%"></i><b style="left:${mk}%"></b></div>
         <div class="legend"><span>${esc(t("legendPrice"))}</span><span>${esc(t("legendMarket"))}</span></div>
         <div class="mkt">${esc(t("marketLine", { m: fmt(d.market), n: d.comps, b: basisText(d.comps_basis) }))}</div>
-        <div class="margin">${esc(t("resale"))} <span class="num">+${fmt(d.resale_margin)} Kč</span></div>
+        ${resaleBlock(d)}
         <div class="score">${esc(t("score"))} <span class="num">${esc(d.score)}</span></div>
       </div>
       <div class="actions">

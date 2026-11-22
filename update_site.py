@@ -20,6 +20,8 @@ import urllib.request
 import datetime as dt
 
 DATA = "docs/data"
+RESALE_FIELDS = ("resale_basis", "resale_n", "resale_days", "resale_comps_basis", "resale_quick",
+                 "resale_typical", "profit_quick", "profit_typical")
 KEEP_DAYS_AFTER_GONE = 30
 MAX_IN_MESSAGE = 8
 
@@ -49,14 +51,31 @@ def telegram(text):
         print("Telegram error:", e, file=sys.stderr)
 
 
+def k(v):
+    """120 400 -> "120 тыс." for compact Telegram lines."""
+    return f"{round(v / 1000):,}".replace(",", " ") + " тыс."
+
+
+def resale_line(d):
+    if "resale_typical" not in d:
+        return f"перепродажа ≈ +{n(d.get('resale_margin', 0))} Kč"
+    basis = {"sold": f"по {d['resale_n']} продажам" + (f", уходят за ~{d['resale_days']} дн." if d.get("resale_days") is not None else ""),
+             "private": f"по {d['resale_n']} объявлениям частников",
+             "estimate": "грубая оценка"}.get(d.get("resale_basis"), "")
+    t = lambda v: f"{round(v / 1000):,}".replace(",", " ")
+    sign = lambda v: ("+" if v >= 0 else "−") + t(abs(v))
+    return (f"продать реально {t(d['resale_quick'])}–{t(d['resale_typical'])} тыс. Kč ({basis}), "
+            f"чистыми {sign(d['profit_quick'])}…{sign(d['profit_typical'])} тыс.")
+
+
 def card(d, prefix=""):
     tags = []
     tags.append("частник" if d.get("private") else "дилер")
     tags += d.get("hot") or []
     warn = " ⚠️" if d.get("warnings") else ""
     return (f"{prefix}<b>{html.escape(d['model'])} {d['year']}</b>, {n(d['km'])} км{warn}\n"
-            f"<b>{n(d['price'])} Kč</b> — рынок ≈ {n(d['market'])} (−{round(d['discount'] * 100)}%), "
-            f"перепродажа ≈ +{n(d['resale_margin'])} Kč\n"
+            f"<b>{n(d['price'])} Kč</b> — рынок ≈ {n(d['market'])} (−{round(d['discount'] * 100)}%)\n"
+            f"{html.escape(resale_line(d))}\n"
             f"{html.escape(' · '.join(tags))}\n"
             f"<a href=\"{html.escape(d['url'])}\">{html.escape(d['title'][:60])}</a>")
 
@@ -87,7 +106,8 @@ def main():
         # Known car: refresh what the quick scan re-measured, keep what only the full read knows.
         old.update(live=True, last_seen_at=now, price=d["price"], market=d["market"], comps=d["comps"],
                    comps_basis=d["comps_basis"], discount=d["discount"], resale_margin=d["resale_margin"],
-                   offer=d["offer"], price_history=hist[-10:])
+                   offer=d["offer"], price_history=hist[-10:],
+                   **{f: d[f] for f in RESALE_FIELDS if f in d})
 
     cutoff = (dt.datetime.now() - dt.timedelta(days=KEEP_DAYS_AFTER_GONE)).strftime("%Y-%m-%d %H:%M")
     for k in list(by_id):

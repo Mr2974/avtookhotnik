@@ -50,6 +50,18 @@ jobs:
           print(f"run={'true' if run else 'false'}")
           EOF
 
+      - name: Загрузить историю объявлений (для реальных цен продаж)
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          mkdir -p history
+          if git fetch -q --depth=1 origin history 2>/dev/null; then
+            git show FETCH_HEAD:active.json > history/active.json
+            git show FETCH_HEAD:sold.json > history/sold.json
+            ls -la history
+          else
+            echo "Истории пока нет, начинаю с нуля"
+          fi
+
       - name: Список уже найденных машин
         if: steps.gate.outputs.run == 'true'
         run: |
@@ -57,7 +69,7 @@ jobs:
 
       - name: Поиск на Sauto.cz и Bazoš.cz
         if: steps.gate.outputs.run == 'true'
-        run: python3 car_hunter.py --config config.json --out out --seen seen.json
+        run: python3 car_hunter.py --config config.json --out out --seen seen.json --history history
 
       - name: Обновить сайт и отправить уведомление
         if: steps.gate.outputs.run == 'true'
@@ -68,6 +80,18 @@ jobs:
           NOTIFY_ALWAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.report }}
           SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: python3 update_site.py
+
+      - name: Обновить историю продаж
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          python3 history.py --listings out/sauto_listings.json --dir history
+          git config user.name "avtookhotnik-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          b1=$(git hash-object -w history/active.json)
+          b2=$(git hash-object -w history/sold.json)
+          tree=$(printf "100644 blob %s\tactive.json\n100644 blob %s\tsold.json\n" "$b1" "$b2" | git mktree)
+          commit=$(git commit-tree "$tree" -m "История объявлений $(date '+%Y-%m-%d %H:%M')")
+          git push -q -f origin "$commit:refs/heads/history"
 
       - name: Сохранить находки
         if: steps.gate.outputs.run == 'true'

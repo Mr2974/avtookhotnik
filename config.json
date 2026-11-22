@@ -35,6 +35,9 @@
   ],
   "bazos_pages": 2,
   "bazos_phrase_pages": 2,
+  "bazos_comp_pages": 6,
+  "resale_costs": 6000,
+  "sold_max_days": 60,
   "max_detail_requests": 350,
   "request_delay_sec": 0.25,
   "models": [
