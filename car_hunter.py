@@ -140,13 +140,18 @@ def generation(year, bounds):
 # ---------------------------------------------------------------- http
 
 class Http:
-    def __init__(self, delay):
+    """Polite GET with retries. Per-host delays (Bazos limits fast clients with HTTP 429)."""
+
+    def __init__(self, delay, host_delays=None):
         self.delay = delay
+        self.host_delays = host_delays or {}
         self.count = 0
         self.errors = 0
 
     def get(self, url, as_json=False):
-        for attempt in range(3):
+        host = urllib.parse.urlsplit(url).hostname or ""
+        pause = self.host_delays.get(host, self.delay)
+        for attempt in range(4):
             try:
                 req = urllib.request.Request(url, headers={
                     "User-Agent": UA,
@@ -159,17 +164,26 @@ class Http:
                     if r.headers.get("Content-Encoding") == "gzip":
                         raw = gzip.decompress(raw)
                 self.count += 1
-                time.sleep(self.delay)
+                time.sleep(pause)
                 text = raw.decode("utf-8", errors="replace")
                 return json.loads(text) if as_json else text
             except (urllib.error.URLError, http.client.HTTPException, OSError, json.JSONDecodeError, ValueError) as e:
                 if isinstance(e, urllib.error.HTTPError) and e.code in (404, 410):
                     return None  # page past the last one, or a removed ad: not an error
-                if attempt == 2:
+                if attempt == 3:
                     self.errors += 1
                     print(f"  ! {url[:90]}: {e}", file=sys.stderr)
                     return None
-                time.sleep(2 * (attempt + 1))
+                if isinstance(e, urllib.error.HTTPError) and e.code == 429:
+                    # Too many requests: back off for good and wait what the site asks (or 30/60/90 s).
+                    retry = e.headers.get("Retry-After") if e.headers else None
+                    wait = int(retry) if retry and retry.isdigit() else 30 * (attempt + 1)
+                    pause = max(pause, 1.5)
+                    self.host_delays[host] = pause
+                    print(f"  … {host}: 429, жду {min(wait, 120)} с", file=sys.stderr)
+                    time.sleep(min(wait, 120))
+                else:
+                    time.sleep(2 * (attempt + 1))
 
 
 # ---------------------------------------------------------------- model matching
@@ -658,7 +672,7 @@ def main():
     if args.models:
         wanted = [w.strip().lower() for w in args.models.split(",")]
         models = [m for m in models if any(w in m["name"].lower() for w in wanted)]
-    http = Http(cfg.get("request_delay_sec", 0.3))
+    http = Http(cfg.get("request_delay_sec", 0.3), {"auto.bazos.cz": cfg.get("bazos_delay_sec", 0.8)})
     t0 = time.time()
     gens = {m["name"]: m.get("generations", []) for m in models}
     seo_map = {seo: m for m in models for seo in m["sauto"]}
