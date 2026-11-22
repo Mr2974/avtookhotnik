@@ -40,7 +40,7 @@
   "sold_max_days": 60,
   "max_detail_requests": 350,
   "request_delay_sec": 0.25,
-  "bazos_delay_sec": 0.8,
+  "bazos_delay_sec": 1.2,
   "models": [
     {"name": "Škoda Octavia", "sauto": ["skoda:octavia"], "bazos": ["skoda", "octavia"], "tier": 1, "generations": [2004, 2013, 2020]},
     {"name": "Škoda Superb", "sauto": ["skoda:superb"], "bazos": ["skoda", "superb"], "tier": 1, "generations": [2008, 2015, 2024]},
