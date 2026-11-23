@@ -180,6 +180,22 @@ footer { color: var(--muted); font-size: 12.5px; }
 .ai-sum { overflow-wrap: anywhere; }
 .ai-issues { margin: 2px 0 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
 .ai-issues li.serious { color: var(--warn); }
+.tier { display: grid; gap: 1px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.tier:last-of-type { border-bottom: 0; }
+.t-h, .t-p { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.t-h { font-size: 12.5px; font-weight: 600; }
+.t-days { font: 500 12px var(--f-data); color: var(--muted); }
+.t-p { font-size: 13px; color: var(--muted); }
+.t-p b { color: var(--fg); }
+.t-net { font-weight: 600; font-size: 14px; }
+.t-net.pos { color: var(--good); }
+.t-net.neg { color: var(--bad); }
+.liq { font-size: 12.5px; font-weight: 600; }
+.liq.fast { color: var(--good); }
+.liq.medium { color: var(--muted); }
+.liq.slow { color: var(--warn); }
+.rs-note { font-size: 11.5px; color: var(--muted); }
+.tabnote { margin-bottom: 2px; }
 </style>
 </head>
 <body>
@@ -217,7 +233,10 @@ footer { color: var(--muted); font-size: 12.5px; }
     <select id="f-sort">
       <option value="score" data-i18n="sortScore">Сначала лучшие</option>
       <option value="discount" data-i18n="sortDiscount">Самая большая скидка</option>
-      <option value="margin" data-i18n="sortMargin">Самая большая маржа</option>
+      <option value="margin" data-i18n="sortMargin">Самая большая прибыль</option>
+      <option value="year_new" data-i18n="sortYearNew">Сначала новее</option>
+      <option value="year_old" data-i18n="sortYearOld">Сначала старше</option>
+      <option value="speed" data-i18n="sortSpeed">Быстрее продаются</option>
       <option value="km" data-i18n="sortKm">Меньше пробег</option>
       <option value="price" data-i18n="sortPrice">Дешевле</option>
       <option value="found" data-i18n="sortFound">Новые находки</option>
@@ -261,6 +280,7 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "без STK (техосмотра)", wRepair: "требует ремонта", wImport: "импорт без истории?", wLowKm: "подозрительно малый пробег — проверить по VIN",
       wChain: "сетевой салон: уточните, не зависит ли цена от кредита или доп. услуг", wCheap: "слишком дёшево — проверить на мошенничество и скрытые дефекты",
       hMove: "Переезд / новое авто",
+      profitable: "Выгодные", tierQuick: "⚡ Быстро", tierTypical: "● Обычно", tierMax: "⏳ Максимум", listAt: "выставить", daysApprox: "≈{d} дн.", howToResell: "Как перепродать", netNote: "прибыль — чистыми, после торга и расходов ~{c} Kč", liqFast: "продаётся быстро", liqMedium: "продаётся средне", liqSlow: "продаётся медленно", liqBasisSold: "по {n} продажам", liqBasisAge: "по возрасту объявлений", profitNote: "Машины, на которых даже при быстрой продаже остаётся от {p} Kč чистыми — после торга и расходов ~{c} Kč. Только там, где цена продажи посчитана по частным объявлениям или реальным продажам.", sortYearNew: "Сначала новее", sortYearOld: "Сначала старше", sortSpeed: "Быстрее продаются", sortMargin: "Самая большая прибыль",
       sellerSays: "Пишет продавец", aiTitle: "Проверка ИИ по фото и описанию", aiScore: "внешний вид {s}/5", aiOk: "без замечаний", aiCaution: "есть замечания", aiNoPhotos: "фото непригодны для оценки", aiPhoto: "фото", rejectedSub: "отсеяно после проверки описаний и фото: {n}",
       defects: {"not_running": "не на ходу", "parts_or_repair": "на запчасти или в ремонт", "engine_failure": "неисправен двигатель", "gearbox_failure": "неисправна КПП", "head_gasket": "прокладка ГБЦ", "overheating": "перегрев", "flood": "после наводнения", "crashed": "битая", "no_papers": "нет документов", "finance_only_price": "цена только при кредите", "lease": "лизинг или аренда", "coolant_leak": "уходит антифриз", "oil_leak": "течёт масло", "oil_consumption": "ест масло", "smoke": "дымит", "clutch": "сцепление", "flywheel": "маховик", "turbo": "турбина", "dpf": "сажевый фильтр", "injectors": "форсунки", "warning_lights": "горит контролька", "electrical": "электрика", "suspension_brakes": "ходовая или тормоза", "rust": "ржавчина", "structural_rust": "сквозная ржавчина", "no_stk": "нет STK", "repair_needed": "нужен ремонт", "mileage_doubt": "пробег под вопросом", "body_cosmetic": "вмятины, царапины", "glass": "трещина стекла", "tyres": "нужна резина", "interior_wear": "износ салона", "ac": "кондиционер", "accident_damage": "следы аварии", "paint_mismatch": "перекрашенные детали", "photos_insufficient": "мало или плохие фото", "stock_or_other_car_photos": "фото не этой машины?", "other": "другое"},
       sellReal: "Реально продать", sellQuick: "быстро", sellTypical: "обычно", basisSold: "по {n} проданным похожим, уходят за ~{d} дн.", basisSoldN: "по {n} проданным похожим", basisPrivate: "по {n} объявлениям частников, с учётом торга", basisEstimate: "грубая оценка: мало данных", net: "Чистыми после расходов ~{c} Kč:", soldTracked: "отслежено продаж: {n}",
@@ -291,6 +311,7 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "no valid STK (inspection)", wRepair: "needs repair", wImport: "import without history?", wLowKm: "suspiciously low mileage — check the VIN",
       wChain: "dealer chain: ask whether the price depends on financing or extras", wCheap: "too cheap — check for fraud and hidden defects",
       hMove: "Moving / new car",
+      profitable: "Best profit", tierQuick: "⚡ Quick", tierTypical: "● Typical", tierMax: "⏳ Max", listAt: "list at", daysApprox: "≈{d} days", howToResell: "How to resell", netNote: "profit is net, after haggling and ~{c} Kč costs", liqFast: "sells fast", liqMedium: "sells at a normal pace", liqSlow: "sells slowly", liqBasisSold: "from {n} sales", liqBasisAge: "from the age of current ads", profitNote: "Cars that leave at least {p} Kč net even on a quick sale, after haggling and ~{c} Kč costs. Only where the sale price comes from private ads or real sales.", sortYearNew: "Newest first", sortYearOld: "Oldest first", sortSpeed: "Sells fastest", sortMargin: "Biggest profit",
       sellerSays: "The seller writes", aiTitle: "AI check of photos and text", aiScore: "condition {s}/5", aiOk: "nothing notable", aiCaution: "has issues", aiNoPhotos: "photos not usable for a verdict", aiPhoto: "photo", rejectedSub: "dropped after checking texts and photos: {n}",
       defects: {"not_running": "not running", "parts_or_repair": "sold for parts or repair", "engine_failure": "engine fault", "gearbox_failure": "gearbox fault", "head_gasket": "head gasket", "overheating": "overheating", "flood": "flood damage", "crashed": "accident damage", "no_papers": "no papers", "finance_only_price": "price only with financing", "lease": "lease or rent", "coolant_leak": "coolant loss", "oil_leak": "oil leak", "oil_consumption": "burns oil", "smoke": "smokes", "clutch": "clutch", "flywheel": "dual-mass flywheel", "turbo": "turbo", "dpf": "DPF", "injectors": "injectors", "warning_lights": "warning light on", "electrical": "electrics", "suspension_brakes": "suspension or brakes", "rust": "rust", "structural_rust": "structural rust", "no_stk": "no valid STK", "repair_needed": "needs repair", "mileage_doubt": "mileage in doubt", "body_cosmetic": "dents, scratches", "glass": "cracked glass", "tyres": "tyres needed", "interior_wear": "interior wear", "ac": "air conditioning", "accident_damage": "accident traces", "paint_mismatch": "repainted panels", "photos_insufficient": "few or poor photos", "stock_or_other_car_photos": "photos may not be this car", "other": "other"},
       sellReal: "Realistic sale price", sellQuick: "quick", sellTypical: "typical", basisSold: "from {n} similar cars sold, they sell in ~{d} days", basisSoldN: "from {n} similar cars sold", basisPrivate: "from {n} private-seller ads, after haggling", basisEstimate: "rough estimate: little data", net: "Net after ~{c} Kč costs:", soldTracked: "sales tracked: {n}",
@@ -321,6 +342,7 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "без STK (техогляду)", wRepair: "потребує ремонту", wImport: "імпорт без історії?", wLowKm: "підозріло малий пробіг — перевірте VIN",
       wChain: "мережевий салон: уточніть, чи не залежить ціна від кредиту або дод. послуг", wCheap: "занадто дешево — перевірте на шахрайство і приховані дефекти",
       hMove: "Переїзд / нове авто",
+      profitable: "Вигідні", tierQuick: "⚡ Швидко", tierTypical: "● Зазвичай", tierMax: "⏳ Максимум", listAt: "виставити", daysApprox: "≈{d} дн.", howToResell: "Як перепродати", netNote: "прибуток — чистими, після торгу і витрат ~{c} Kč", liqFast: "продається швидко", liqMedium: "продається середньо", liqSlow: "продається повільно", liqBasisSold: "за {n} продажами", liqBasisAge: "за віком оголошень", profitNote: "Авто, на яких навіть при швидкому продажу лишається від {p} Kč чистими — після торгу і витрат ~{c} Kč. Лише там, де ціну продажу пораховано за приватними оголошеннями або реальними продажами.", sortYearNew: "Спочатку новіші", sortYearOld: "Спочатку старші", sortSpeed: "Швидше продаються", sortMargin: "Найбільший прибуток",
       sellerSays: "Пише продавець", aiTitle: "Перевірка ШІ за фото й описом", aiScore: "зовнішній вигляд {s}/5", aiOk: "без зауважень", aiCaution: "є зауваження", aiNoPhotos: "фото непридатні для оцінки", aiPhoto: "фото", rejectedSub: "відсіяно після перевірки описів і фото: {n}",
       defects: {"not_running": "не на ходу", "parts_or_repair": "на запчастини або в ремонт", "engine_failure": "несправний двигун", "gearbox_failure": "несправна КПП", "head_gasket": "прокладка ГБЦ", "overheating": "перегрів", "flood": "після повені", "crashed": "бита", "no_papers": "немає документів", "finance_only_price": "ціна лише з кредитом", "lease": "лізинг або оренда", "coolant_leak": "тече антифриз", "oil_leak": "тече масло", "oil_consumption": "їсть масло", "smoke": "димить", "clutch": "зчеплення", "flywheel": "маховик", "turbo": "турбіна", "dpf": "сажовий фільтр", "injectors": "форсунки", "warning_lights": "горить контрольна лампа", "electrical": "електрика", "suspension_brakes": "ходова або гальма", "rust": "іржа", "structural_rust": "наскрізна іржа", "no_stk": "немає STK", "repair_needed": "потрібен ремонт", "mileage_doubt": "пробіг під питанням", "body_cosmetic": "вм’ятини, подряпини", "glass": "тріщина скла", "tyres": "потрібна гума", "interior_wear": "знос салону", "ac": "кондиціонер", "accident_damage": "сліди аварії", "paint_mismatch": "перефарбовані деталі", "photos_insufficient": "мало або погані фото", "stock_or_other_car_photos": "фото не цього авто?", "other": "інше"},
       sellReal: "Реально продати", sellQuick: "швидко", sellTypical: "зазвичай", basisSold: "за {n} проданими схожими, продаються за ~{d} дн.", basisSoldN: "за {n} проданими схожими", basisPrivate: "за {n} оголошеннями приватних продавців, з урахуванням торгу", basisEstimate: "груба оцінка: мало даних", net: "Чистими після витрат ~{c} Kč:", soldTracked: "відстежено продажів: {n}",
@@ -351,6 +373,7 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "bez platné STK", wRepair: "vyžaduje opravu", wImport: "dovoz bez historie?", wLowKm: "podezřele nízký nájezd — ověřte VIN",
       wChain: "síťový prodejce: ověřte, zda cena nezávisí na úvěru či doplňkových službách", wCheap: "podezřele levné — ověřte podvod a skryté vady",
       hMove: "Stěhování / nové auto",
+      profitable: "Výhodné", tierQuick: "⚡ Rychle", tierTypical: "● Běžně", tierMax: "⏳ Maximum", listAt: "inzerovat za", daysApprox: "≈{d} dní", howToResell: "Jak přeprodat", netNote: "zisk je čistý, po smlouvání a nákladech ~{c} Kč", liqFast: "prodává se rychle", liqMedium: "prodává se průměrně", liqSlow: "prodává se pomalu", liqBasisSold: "podle {n} prodejů", liqBasisAge: "podle stáří inzerátů", profitNote: "Auta, na kterých i při rychlém prodeji zůstane aspoň {p} Kč čistého po smlouvání a nákladech ~{c} Kč. Jen tam, kde je prodejní cena spočítaná z inzerátů soukromníků nebo skutečných prodejů.", sortYearNew: "Nejnovější", sortYearOld: "Nejstarší", sortSpeed: "Nejrychleji prodejné", sortMargin: "Největší zisk",
       sellerSays: "Prodejce píše", aiTitle: "Kontrola AI z fotek a popisu", aiScore: "vzhled {s}/5", aiOk: "bez výhrad", aiCaution: "má výhrady", aiNoPhotos: "fotky nejsou použitelné", aiPhoto: "foto", rejectedSub: "vyřazeno po kontrole popisů a fotek: {n}",
       defects: {"not_running": "nepojízdné", "parts_or_repair": "na díly nebo na opravu", "engine_failure": "závada motoru", "gearbox_failure": "závada převodovky", "head_gasket": "těsnění pod hlavou", "overheating": "přehřívání", "flood": "po povodni", "crashed": "havarované", "no_papers": "bez dokladů", "finance_only_price": "cena jen při financování", "lease": "leasing nebo pronájem", "coolant_leak": "ztráta chladicí kapaliny", "oil_leak": "únik oleje", "oil_consumption": "spotřeba oleje", "smoke": "kouří", "clutch": "spojka", "flywheel": "dvouhmotový setrvačník", "turbo": "turbo", "dpf": "DPF", "injectors": "vstřikovače", "warning_lights": "svítí kontrolka", "electrical": "elektrika", "suspension_brakes": "podvozek nebo brzdy", "rust": "koroze", "structural_rust": "prorezlá karoserie", "no_stk": "bez STK", "repair_needed": "potřebuje opravu", "mileage_doubt": "nejistý nájezd", "body_cosmetic": "ťukance, škrábance", "glass": "prasklé sklo", "tyres": "nutné pneu", "interior_wear": "opotřebený interiér", "ac": "klimatizace", "accident_damage": "stopy po nehodě", "paint_mismatch": "přelakované díly", "photos_insufficient": "málo nebo špatné fotky", "stock_or_other_car_photos": "fotky jiného auta?", "other": "jiné"},
       sellReal: "Reálně prodáte za", sellQuick: "rychle", sellTypical: "běžně", basisSold: "podle {n} prodaných podobných vozů, prodají se za ~{d} dní", basisSoldN: "podle {n} prodaných podobných vozů", basisPrivate: "podle {n} inzerátů soukromníků, po smlouvání", basisEstimate: "hrubý odhad: málo dat", net: "Čistý zisk po nákladech ~{c} Kč:", soldTracked: "sledováno prodejů: {n}",
@@ -364,7 +387,7 @@ footer { color: var(--muted); font-size: 12.5px; }
     "слишком дёшево — проверить на мошенничество и скрытые дефекты": "wCheap",
   };
   const BASIS_KEYS = { "двигатель": "bEngine", "топливо+КПП": "bFuelGear", "топливо": "bFuel", "модель": "bModel" };
-  const STATUSES = ["new", "interested", "contacted", "rejected", "archived", "all"];
+  const STATUSES = ["new", "profitable", "interested", "contacted", "rejected", "archived", "all"];
 
   const state = { deals: [], meta: null, tab: "new", model: "", seller: "", sort: "score", hot: false, openMsg: new Set(), openDesc: new Set() };
   const $ = (id) => document.getElementById(id);
@@ -442,6 +465,7 @@ footer { color: var(--muted); font-size: 12.5px; }
   function renderControls() {
     const counts = {};
     for (const d of state.deals) counts[statusOf(d)] = (counts[statusOf(d)] || 0) + 1;
+    counts.profitable = state.deals.filter(isProfitable).length;
     $("tabs").innerHTML = STATUSES.map((s) => `<button class="tab" data-tab="${s}" aria-pressed="${state.tab === s}">${esc(t(s))}<span class="c">${s === "all" ? state.deals.length : (counts[s] || 0)}</span></button>`).join("");
     const models = [...new Set(state.deals.map((d) => d.model))].sort();
     $("f-model").innerHTML = `<option value="">${esc(t("allModels"))}</option>` + models.map((m) => `<option ${m === state.model ? "selected" : ""}>${esc(m)}</option>`).join("");
@@ -449,17 +473,30 @@ footer { color: var(--muted); font-size: 12.5px; }
   }
 
   function visible() {
-    let xs = state.deals.filter((d) => state.tab === "all" || statusOf(d) === state.tab);
+    let xs = state.tab === "profitable" ? state.deals.filter(isProfitable)
+      : state.deals.filter((d) => state.tab === "all" || statusOf(d) === state.tab);
     if (state.model) xs = xs.filter((d) => d.model === state.model);
     if (state.seller) xs = xs.filter((d) => (state.seller === "private") === !!d.private);
     if (state.hot) xs = xs.filter((d) => (d.hot || []).length);
     const key = {
+      profit: (d) => -(d.profit_quick ?? -1e9),
       score: (d) => -d.score, discount: (d) => -d.discount, margin: (d) => -(d.profit_typical ?? d.resale_margin),
       km: (d) => d.km, price: (d) => d.price, found: (d) => -(Date.parse((d.first_found_at || d.found_at || "").replace(" ", "T")) || 0),
-    }[state.sort] || ((d) => -d.score);
+      year_new: (d) => -(d.year * 1e7) + d.km / 1, year_old: (d) => d.year * 1e7 + d.km / 1,
+      speed: (d) => speedRank(d),
+    }[state.tab === "profitable" && state.sort === "score" ? "profit" : state.sort] || ((d) => -d.score);
     return xs.sort((a, b) => key(a) - key(b));
   }
 
+  const profitMin = () => (state.meta && state.meta.profit_tab_min) || 10000;
+  const isProfitable = (d) => ["new", "interested", "contacted"].includes(statusOf(d))
+    && (d.resale_basis === "sold" || d.resale_basis === "private") && (d.profit_quick ?? -1) >= profitMin()
+    && (d.discount ?? 0) <= 0.5;  // deeper discounts are usually fakes or hidden faults: not "best profit"
+  const speedRank = (d) => {
+    const l = d.liquidity || {};
+    if (l.days_typical != null) return l.days_typical;
+    return { fast: 15, medium: 40, slow: 90 }[l.label] ?? 999;
+  };
   const cheaperBy = (d) => { const h = d.price_history || []; return h.length > 1 && h[0][1] > d.price ? h[0][1] - d.price : 0; };
   const warnText = (w) => WARN_KEYS[w] ? t(WARN_KEYS[w]) : (w.startsWith("сетевой салон") ? t("wChain") : w);
   function hotChip(h) {
@@ -484,17 +521,27 @@ footer { color: var(--muted); font-size: 12.5px; }
     if (d.resale_typical == null) {
       return `<div class="margin">${esc(t("resale"))} <span class="num">+${fmt(d.resale_margin)} Kč</span></div>`;
     }
-    const basis = d.resale_basis === "sold"
-      ? t(d.resale_days != null ? "basisSold" : "basisSoldN", { n: d.resale_n, d: d.resale_days })
-      : d.resale_basis === "private" ? t("basisPrivate", { n: d.resale_n }) : t("basisEstimate");
     const sign = (v) => (v >= 0 ? "+" : "−") + fmt(Math.abs(v));
     const costs = (state.meta && state.meta.resale_costs) || 6000;
+    const liq = d.liquidity || {};
+    const days = (k) => liq[k] != null ? esc(t("daysApprox", { d: liq[k] })) : "";
+    const tiers = d.list_quick == null
+      ? [["tierQuick", d.resale_quick, d.profit_quick, ""], ["tierTypical", d.resale_typical, d.profit_typical, ""]]
+      : [["tierQuick", d.list_quick, d.profit_quick, "days_quick"], ["tierTypical", d.list_typical, d.profit_typical, "days_typical"],
+         ["tierMax", d.list_max, d.profit_max, "days_max"]];
+    const basis = d.resale_basis === "sold" ? t("basisSoldN", { n: d.resale_n })
+      : d.resale_basis === "private" ? t("basisPrivate", { n: d.resale_n }) : t("basisEstimate");
+    const liqText = { fast: "liqFast", medium: "liqMedium", slow: "liqSlow" }[liq.label];
+    const liqBasis = liq.basis === "sold" ? t("liqBasisSold", { n: liq.n }) : liq.basis === "age" ? t("liqBasisAge") : "";
     return `<div class="resale ${d.resale_basis}">
-        <div class="rs-k">${esc(t("sellReal"))}</div>
-        <div class="rs-v num">${fmt(d.resale_quick)} – ${fmt(d.resale_typical)} <small>Kč</small></div>
-        <div class="rs-q">${esc(t("sellQuick"))} ${fmt(d.resale_quick)} · ${esc(t("sellTypical"))} ${fmt(d.resale_typical)}</div>
+        <div class="rs-k">${esc(t("howToResell"))}</div>
+        ${tiers.map(([k, price, profit, dk]) => `<div class="tier">
+          <div class="t-h"><span>${esc(t(k))}</span><span class="t-days">${dk ? days(dk) : ""}</span></div>
+          <div class="t-p"><span>${esc(t("listAt"))} <b class="num">${fmt(price)}</b> Kč</span>
+            <span class="t-net num ${profit < 0 ? "neg" : "pos"}">${sign(profit)}</span></div></div>`).join("")}
         <div class="rs-b">${esc(basis)}</div>
-        <div class="margin ${d.profit_typical < 0 ? "neg" : ""}">${esc(t("net", { c: fmt(costs) }))} <span class="num">${sign(d.profit_quick)} … ${sign(d.profit_typical)} Kč</span></div>
+        ${liqText ? `<div class="liq ${liq.label}">${esc(t(liqText))}${liqBasis ? " · " + esc(liqBasis) : ""}</div>` : ""}
+        <div class="rs-note">${esc(t("netNote", { c: fmt(costs) }))}</div>
       </div>`;
   }
 
@@ -596,7 +643,9 @@ footer { color: var(--muted); font-size: 12.5px; }
   function render() {
     renderRun(); renderControls();
     const xs = visible();
-    $("list").innerHTML = xs.length ? xs.map(card).join("") : `<div class="empty">${esc(t(state.deals.length ? "emptyTab" : "emptyAll"))}</div>`;
+    const costs = (state.meta && state.meta.resale_costs) || 6000;
+    const tabNote = state.tab === "profitable" ? `<div class="note tabnote">${esc(t("profitNote", { p: fmt(profitMin()), c: fmt(costs) }))}</div>` : "";
+    $("list").innerHTML = tabNote + (xs.length ? xs.map(card).join("") : `<div class="empty">${esc(t(state.deals.length ? "emptyTab" : "emptyAll"))}</div>`);
   }
 
   document.addEventListener("click", async (e) => {

@@ -37,6 +37,8 @@
   "bazos_phrase_pages": 2,
   "bazos_comp_pages": 6,
   "resale_costs": 6000,
+  "profit_tab_min": 10000,
+  "liquidity_min_sales": 8,
   "sold_max_days": 60,
   "ai_model": "claude-opus-5-5",
   "ai_effort": "low",

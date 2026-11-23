@@ -20,8 +20,10 @@ import urllib.request
 import datetime as dt
 
 DATA = "docs/data"
-RESALE_FIELDS = ("resale_basis", "resale_n", "resale_days", "resale_comps_basis", "resale_quick",
-                 "resale_typical", "profit_quick", "profit_typical")
+RESALE_FIELDS = ("resale_basis", "resale_n", "resale_comps_basis", "liquidity", "score",
+                 "list_quick", "list_typical", "list_max", "resale_quick", "resale_typical", "resale_max",
+                 "profit_quick", "profit_typical", "profit_max")
+LIQ_RU = {"fast": "продаётся быстро", "medium": "продаётся средне", "slow": "продаётся медленно"}
 KEEP_DAYS_AFTER_GONE = 30
 MAX_IN_MESSAGE = 8
 
@@ -59,13 +61,17 @@ def k(v):
 def resale_line(d):
     if "resale_typical" not in d:
         return f"перепродажа ≈ +{n(d.get('resale_margin', 0))} Kč"
-    basis = {"sold": f"по {d['resale_n']} продажам" + (f", уходят за ~{d['resale_days']} дн." if d.get("resale_days") is not None else ""),
-             "private": f"по {d['resale_n']} объявлениям частников",
-             "estimate": "грубая оценка"}.get(d.get("resale_basis"), "")
     t = lambda v: f"{round(v / 1000):,}".replace(",", " ")
     sign = lambda v: ("+" if v >= 0 else "−") + t(abs(v))
-    return (f"продать реально {t(d['resale_quick'])}–{t(d['resale_typical'])} тыс. Kč ({basis}), "
-            f"чистыми {sign(d['profit_quick'])}…{sign(d['profit_typical'])} тыс.")
+    liq = d.get("liquidity") or {}
+    days = lambda k: f" ≈{liq[k]} дн." if liq.get(k) is not None else ""
+    basis = {"sold": f"по {d['resale_n']} продажам", "private": f"по {d['resale_n']} объявлениям частников",
+             "estimate": "грубая оценка"}.get(d.get("resale_basis"), "")
+    lines = [f"⚡ быстро: выставить {t(d['list_quick'])} тыс.{days('days_quick')} → чистыми {sign(d['profit_quick'])} тыс."]
+    if "list_max" in d:
+        lines.append(f"⏳ максимум: {t(d['list_max'])} тыс.{days('days_max')} → {sign(d['profit_max'])} тыс.")
+    tail = ", ".join(x for x in (basis, LIQ_RU.get(liq.get("label"), "")) if x)
+    return "\n".join(lines) + (f"\n({tail})" if tail else "")
 
 
 DEFECT_RU = {

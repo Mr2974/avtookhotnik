@@ -418,8 +418,14 @@ def parse_year(title, desc):
     ys = [int(y) for y in YEAR_ANY.findall(t) if 1995 <= int(y) <= YEAR_NOW]
     if ys:
         return min(ys)
-    ys = [int(y) for y in YEAR_ANY.findall(d[:600]) if 1995 <= int(y) <= YEAR_NOW]
+    ys = [int(m.group(1)) for m in YEAR_ANY.finditer(d[:600])
+          if 1995 <= int(m.group(1)) <= YEAR_NOW and not YEAR_NOT_BUILT.search(d[max(0, m.start() - 30):m.start()])]
     return min(ys) if ys else None
+
+
+# A year right after these words is an import, STK, service or purchase date, not the build year.
+YEAR_NOT_BUILT = re.compile(r"(dovoz\w*|dovezen\w*|v roce|stk|servis\w*|rozvod\w*|koupen\w*|koupil\w*|vymen\w*|platn\w*|"
+                            r"od roku|vlastni\w*|prepis\w*|registrovan\w* v cr|do|od)\W{0,3}(\w+\W{1,3}){0,2}$")
 
 
 KM_PATTERNS = [
@@ -533,22 +539,28 @@ def quantile(values, q):
 
 
 def estimate_resale(row, comps_by_model, sold_by_model, gens_by_model, cfg):
-    """What the car realistically sells for as a private sale.
-    1) "sold": last asking price of comparable Sauto ads that disappeared after 1–60 days
-       (tracked by history.py) minus 3 % haggling — needs 5+ such sales;
-    2) "private": asking prices of comparable private-seller ads (Sauto + Bazos):
-       quick sale = lower quartile − 3 %, typical = median − 5 %;
-    3) "estimate": market median × 0.82 / 0.88 when there is too little data."""
+    """How to resell the car, as three listing strategies with the price you list at, what you
+    realistically get after haggling, and the net profit:
+      quick   list at the lower quartile of comparable prices: one of the cheapest, sells fastest
+      typical list at the median
+      max     list at the upper quartile: more profit, takes longer
+    Comparable prices come from, in this order:
+      1) "sold": last asking price of comparable Sauto ads that disappeared after 1–sold_max_days days
+         (history.py), haggling −3 %; needs 5+ such sales;
+      2) "private": asking prices of comparable private-seller ads (Sauto + Bazos), haggling −3/−5/−5 %;
+      3) "estimate": market median × 0.86 / 0.92 / 1.0 asking when there is too little data."""
     bounds = gens_by_model.get(row["model"], [])
     need5 = {label: 5 for label, *_ in TIERS}
+    max_days = cfg.get("sold_max_days", 60)
 
     def from_sold(r):
-        comps, basis = select_comps(r, sold_by_model.get(r["model"], []), bounds, need5)
+        pool = [c for c in sold_by_model.get(r["model"], []) if c["days"] <= max_days]
+        comps, basis = select_comps(r, pool, bounds, need5)
         if not comps:
             return None
         prices = [c["price"] for c in comps]
-        days = statistics.median(c["days"] for c in comps)
-        return (quantile(prices, 0.5) * 0.97, quantile(prices, 0.25) * 0.97, len(comps), int(days), basis)
+        asks = (quantile(prices, 0.25), quantile(prices, 0.5), quantile(prices, 0.75))
+        return asks + ((0.97, 0.97, 0.97), len(comps), basis)
 
     def from_private(r):
         private = [c for c in comps_by_model.get(r["model"], []) if c.get("private")]
@@ -556,27 +568,33 @@ def estimate_resale(row, comps_by_model, sold_by_model, gens_by_model, cfg):
         if not comps:
             return None
         prices = [c["price"] for c in comps]
-        return (quantile(prices, 0.5) * 0.95, quantile(prices, 0.25) * 0.97, len(comps), None, basis)
+        asks = (quantile(prices, 0.25), quantile(prices, 0.5), quantile(prices, 0.75))
+        return asks + ((0.97, 0.95, 0.95), len(comps), basis)
 
     for kind, fn in (("sold", from_sold), ("private", from_private)):
         got = with_fuel_fallback(row, fn)
         if got:
-            typical, quick, n, days, basis = got
+            # with_fuel_fallback picks the cheapest result by its first value (the quick ask)
+            ask_q, ask_t, ask_m, haggle, n, basis = got
             break
     else:
-        kind, typical, quick, n, days, basis = "estimate", row["market"] * 0.88, row["market"] * 0.82, 0, None, ""
-    quick = min(quick, typical)
+        kind, n, basis, haggle = "estimate", 0, "", (0.95, 0.95, 0.95)
+        ask_q, ask_t, ask_m = row["market"] * 0.86 / 0.95, row["market"] * 0.92 / 0.95, row["market"]
+    ask_t, ask_m = max(ask_t, ask_q), max(ask_m, ask_t, ask_q)
+    get_q, get_t, get_m = ask_q * haggle[0], ask_t * haggle[1], ask_m * haggle[2]
+    get_t, get_m = max(get_t, get_q), max(get_m, get_t, get_q)
     costs = cfg.get("resale_costs", 6000)
     r100 = lambda v: int(round(v / 100.0) * 100)
-    return {
-        "resale_basis": kind, "resale_n": n, "resale_days": days, "resale_comps_basis": basis,
-        "resale_quick": r100(quick), "resale_typical": r100(typical),
-        "profit_quick": r100(quick - row["price"] - costs), "profit_typical": r100(typical - row["price"] - costs),
-    }
+    out = {"resale_basis": kind, "resale_n": n, "resale_comps_basis": basis}
+    for tier, ask, get in (("quick", ask_q, get_q), ("typical", ask_t, get_t), ("max", ask_m, get_m)):
+        out[f"list_{tier}"] = r100(ask)
+        out[f"resale_{tier}"] = r100(get)
+        out[f"profit_{tier}"] = r100(get - row["price"] - costs)
+    return out
 
 
-def load_sold(history_dir, max_days):
-    """Comparable "sold" listings from history.py: ads that disappeared after 1..max_days days."""
+def load_sold(history_dir, max_days=180):
+    """Sold listings from history.py: ads that disappeared after 1..max_days days on the market."""
     import os
     path = os.path.join(history_dir or "", "sold.json")
     if not history_dir or not os.path.exists(path):
@@ -586,12 +604,71 @@ def load_sold(history_dir, max_days):
     by_model, n = {}, 0
     for item in data["items"]:
         d = dict(zip(cols, item))
-        if not (1 <= d["days"] <= max_days) or d["price"] < 10000:
+        if d.get("days") is None or not (1 <= d["days"] <= max_days) or d["price"] < 10000:
             continue
         d["id"] = "sold:" + str(d["id"])
         by_model.setdefault(d["model"], []).append(d)
         n += 1
     return by_model, n
+
+
+def liquidity_table(sold_by_model, sauto_all, gens_by_model, cfg):
+    """How fast each model sells.
+    From sales (history.py): days on the market of sold cars per model and per generation —
+    quartiles give the expected days for the quick / typical / max listing price.
+    Without enough sales: the median age of the model's current ads relative to all models
+    (ads of slow models stay listed longer) gives only a fast / medium / slow label."""
+    need = cfg.get("liquidity_min_sales", 8)
+    table = {}
+    all_days = [c["days"] for v in sold_by_model.values() for c in v]
+    overall = statistics.median(all_days) if len(all_days) >= 30 else None
+    for model, rows in sold_by_model.items():
+        groups = {(model, None): [c["days"] for c in rows]}
+        for c in rows:
+            g, amb = generation(c["year"], gens_by_model.get(model, []))
+            if not amb:
+                groups.setdefault((model, g), []).append(c["days"])
+        for key, days in groups.items():
+            if len(days) >= need:
+                table[key] = {"basis": "sold", "n": len(days), "days_quick": int(quantile(days, 0.25)),
+                              "days_typical": int(quantile(days, 0.5)), "days_max": int(quantile(days, 0.75))}
+    ages = {}
+    for r in sauto_all:
+        created = (r.get("created") or "")[:10]
+        try:
+            age = (NOW - dt.datetime.strptime(created, "%Y-%m-%d")).days
+        except ValueError:
+            continue
+        if 0 <= age <= 365:
+            ages.setdefault(r["model"], []).append(age)
+    all_ages = [a for v in ages.values() for a in v]
+    overall_age = statistics.median(all_ages) if all_ages else None
+    for model, v in ages.items():
+        if len(v) >= 20 and overall_age:
+            table[(model, "age")] = {"basis": "age", "n": len(v), "ratio": statistics.median(v) / overall_age}
+    table["_overall"] = {"sold_median": overall, "age_median": overall_age}
+    return table
+
+
+def liquidity_of(row, table, gens_by_model):
+    g, amb = generation(row["year"], gens_by_model.get(row["model"], []))
+    hit = (not amb and table.get((row["model"], g))) or table.get((row["model"], None))
+    overall = table.get("_overall", {})
+    if hit:
+        ref = overall.get("sold_median")
+        ratio = hit["days_typical"] / ref if ref else None
+        out = dict(hit, scope="generation" if table.get((row["model"], g)) is hit else "model")
+    else:
+        age = table.get((row["model"], "age"))
+        if not age:
+            return {"label": "unknown"}
+        ratio, out = age["ratio"], {"basis": "age", "n": age["n"]}
+    if ratio is None:
+        label = "unknown"
+    else:
+        label = "fast" if ratio <= 0.8 else "slow" if ratio >= 1.25 else "medium"
+    out["label"] = label
+    return out
 
 
 # ---------------------------------------------------------------- scoring
@@ -616,6 +693,7 @@ def score(row, cfg):
     pts -= min(25, 10 * sev.count("serious")) + min(6, 2 * sev.count("minor"))
     if "profit_typical" in row:
         pts += max(-6, min(8, row["profit_typical"] / 5000))
+    pts += {"fast": 5, "slow": -5}.get((row.get("liquidity") or {}).get("label"), 0)
     if row["discount"] > 0.5:
         pts -= 12  # too good to be true: verify first
     row["score"] = round(pts, 1)
@@ -668,7 +746,7 @@ def main():
 
     # 1. Market data (Sauto + Bazos) and newest Bazos ads, model by model.
     comps_by_model, pool, sauto_all, complete_models = {}, {}, [], []
-    sold_by_model, sold_total = load_sold(args.history, cfg.get("sold_max_days", 60))
+    sold_by_model, sold_total = load_sold(args.history)
 
     def add(rows):
         for r in rows:
@@ -752,6 +830,8 @@ def main():
             if eligible(r):
                 price_it(r)
 
+    liquidity = liquidity_table(sold_by_model, sauto_all, gens, cfg)
+
     # 6. Final verdict.
     deals, dropped, rejected, pending = [], {}, [], 0
     for r in pre:
@@ -785,6 +865,7 @@ def main():
         if r["discount"] > 0.5:
             r["warnings"].append("слишком дёшево — проверить на мошенничество и скрытые дефекты")
         r.update(estimate_resale(r, comps_by_model, sold_by_model, gens, cfg))
+        r["liquidity"] = liquidity_of(r, liquidity, gens)
         score(r, cfg)
         r["offer"] = offer_price(r)
         r["resale_margin"] = r["profit_typical"]
@@ -817,6 +898,7 @@ def main():
         "with_phrases": sum(bool(d["hot"]) for d in deals), "dropped_red_flags": dropped,
         "sold_tracked": sold_total, "resale_from_sales": sum(d["resale_basis"] == "sold" for d in deals),
         "resale_costs": cfg.get("resale_costs", 6000),
+        "profit_tab_min": cfg.get("profit_tab_min", 10000),
         "rejected_by_description": len(rejected), "pending_unchecked": pending, "checks_version": CHECKS_VERSION,
     }
     # Every Sauto listing, for history.py (detects sold cars: ads that disappear).
