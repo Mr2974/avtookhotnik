@@ -23,7 +23,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       TZ: Europe/Prague
       HAS_AI_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
