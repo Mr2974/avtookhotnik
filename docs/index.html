@@ -162,6 +162,24 @@ footer { color: var(--muted); font-size: 12.5px; }
 .resale.sold .rs-b { color: var(--good); font-weight: 500; }
 .margin.neg .num { color: var(--bad); }
 .chip .hint { opacity: .75; font-weight: 400; }
+.ph { display: block; margin: 0 0 10px; border-radius: 10px; overflow: hidden; background: var(--surface-2); aspect-ratio: 16 / 10; max-width: 100%; }
+.ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.seller-says, .ai { margin-top: 10px; border-radius: 10px; padding: 8px 10px; background: var(--surface-2); display: grid; gap: 4px; font-size: 13px; }
+.ss-k, .ai-k { font-size: 11.5px; letter-spacing: .03em; color: var(--muted); font-weight: 600; }
+.ss-row { display: grid; gap: 1px; }
+.ss-row.serious .ss-name { color: var(--warn); font-weight: 600; }
+.ss-row.minor .ss-name { color: var(--muted); }
+.ss-q { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.ai-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.ai-score { font: 600 12.5px var(--f-data); padding: 1px 7px; border-radius: 6px; background: var(--surface); }
+.ai-score.s5, .ai-score.s4 { color: var(--good); }
+.ai-score.s3 { color: var(--warn); }
+.ai-score.s2, .ai-score.s1 { color: var(--bad); }
+.ai-verdict { font-size: 12px; color: var(--muted); }
+.ai.caution { box-shadow: inset 3px 0 0 var(--warn); }
+.ai-sum { overflow-wrap: anywhere; }
+.ai-issues { margin: 2px 0 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
+.ai-issues li.serious { color: var(--warn); }
 </style>
 </head>
 <body>
@@ -183,7 +201,7 @@ footer { color: var(--muted); font-size: 12.5px; }
 
   <section class="run" id="run">
     <div><span class="k" data-i18n="lastRun">Последний поиск</span><span class="v" id="r-time">—</span><span class="sub" id="r-ago"></span></div>
-    <div><span class="k" data-i18n="checked">Проверено объявлений</span><span class="v" id="r-checked">—</span></div>
+    <div><span class="k" data-i18n="checked">Проверено объявлений</span><span class="v" id="r-checked">—</span><span class="sub" id="r-rejected"></span></div>
     <div><span class="k" data-i18n="compsCount">Для сравнения цен</span><span class="v" id="r-comps">—</span><span class="sub" id="r-sold"></span></div>
     <div><span class="k" data-i18n="liveCount">Актуальных находок</span><span class="v accent" id="r-deals">—</span></div>
   </section>
@@ -243,6 +261,8 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "без STK (техосмотра)", wRepair: "требует ремонта", wImport: "импорт без истории?", wLowKm: "подозрительно малый пробег — проверить по VIN",
       wChain: "сетевой салон: уточните, не зависит ли цена от кредита или доп. услуг", wCheap: "слишком дёшево — проверить на мошенничество и скрытые дефекты",
       hMove: "Переезд / новое авто",
+      sellerSays: "Пишет продавец", aiTitle: "Проверка ИИ по фото и описанию", aiScore: "внешний вид {s}/5", aiOk: "без замечаний", aiCaution: "есть замечания", aiNoPhotos: "фото непригодны для оценки", aiPhoto: "фото", rejectedSub: "отсеяно после проверки описаний и фото: {n}",
+      defects: {"not_running": "не на ходу", "parts_or_repair": "на запчасти или в ремонт", "engine_failure": "неисправен двигатель", "gearbox_failure": "неисправна КПП", "head_gasket": "прокладка ГБЦ", "overheating": "перегрев", "flood": "после наводнения", "crashed": "битая", "no_papers": "нет документов", "finance_only_price": "цена только при кредите", "lease": "лизинг или аренда", "coolant_leak": "уходит антифриз", "oil_leak": "течёт масло", "oil_consumption": "ест масло", "smoke": "дымит", "clutch": "сцепление", "flywheel": "маховик", "turbo": "турбина", "dpf": "сажевый фильтр", "injectors": "форсунки", "warning_lights": "горит контролька", "electrical": "электрика", "suspension_brakes": "ходовая или тормоза", "rust": "ржавчина", "structural_rust": "сквозная ржавчина", "no_stk": "нет STK", "repair_needed": "нужен ремонт", "mileage_doubt": "пробег под вопросом", "body_cosmetic": "вмятины, царапины", "glass": "трещина стекла", "tyres": "нужна резина", "interior_wear": "износ салона", "ac": "кондиционер", "accident_damage": "следы аварии", "paint_mismatch": "перекрашенные детали", "photos_insufficient": "мало или плохие фото", "stock_or_other_car_photos": "фото не этой машины?", "other": "другое"},
       sellReal: "Реально продать", sellQuick: "быстро", sellTypical: "обычно", basisSold: "по {n} проданным похожим, уходят за ~{d} дн.", basisSoldN: "по {n} проданным похожим", basisPrivate: "по {n} объявлениям частников, с учётом торга", basisEstimate: "грубая оценка: мало данных", net: "Чистыми после расходов ~{c} Kč:", soldTracked: "отслежено продаж: {n}",
       hints: { "Rychlé jednání": "быстрое решение", "Při rychlém jednání sleva": "скидка при быстрой сделке", "Potřebuji prodat": "нужно продать", "Dohoda možná": "возможен торг", "Rodinné auto": "семейный автомобиль", "Dědictví": "наследство" },
     },
@@ -271,6 +291,8 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "no valid STK (inspection)", wRepair: "needs repair", wImport: "import without history?", wLowKm: "suspiciously low mileage — check the VIN",
       wChain: "dealer chain: ask whether the price depends on financing or extras", wCheap: "too cheap — check for fraud and hidden defects",
       hMove: "Moving / new car",
+      sellerSays: "The seller writes", aiTitle: "AI check of photos and text", aiScore: "condition {s}/5", aiOk: "nothing notable", aiCaution: "has issues", aiNoPhotos: "photos not usable for a verdict", aiPhoto: "photo", rejectedSub: "dropped after checking texts and photos: {n}",
+      defects: {"not_running": "not running", "parts_or_repair": "sold for parts or repair", "engine_failure": "engine fault", "gearbox_failure": "gearbox fault", "head_gasket": "head gasket", "overheating": "overheating", "flood": "flood damage", "crashed": "accident damage", "no_papers": "no papers", "finance_only_price": "price only with financing", "lease": "lease or rent", "coolant_leak": "coolant loss", "oil_leak": "oil leak", "oil_consumption": "burns oil", "smoke": "smokes", "clutch": "clutch", "flywheel": "dual-mass flywheel", "turbo": "turbo", "dpf": "DPF", "injectors": "injectors", "warning_lights": "warning light on", "electrical": "electrics", "suspension_brakes": "suspension or brakes", "rust": "rust", "structural_rust": "structural rust", "no_stk": "no valid STK", "repair_needed": "needs repair", "mileage_doubt": "mileage in doubt", "body_cosmetic": "dents, scratches", "glass": "cracked glass", "tyres": "tyres needed", "interior_wear": "interior wear", "ac": "air conditioning", "accident_damage": "accident traces", "paint_mismatch": "repainted panels", "photos_insufficient": "few or poor photos", "stock_or_other_car_photos": "photos may not be this car", "other": "other"},
       sellReal: "Realistic sale price", sellQuick: "quick", sellTypical: "typical", basisSold: "from {n} similar cars sold, they sell in ~{d} days", basisSoldN: "from {n} similar cars sold", basisPrivate: "from {n} private-seller ads, after haggling", basisEstimate: "rough estimate: little data", net: "Net after ~{c} Kč costs:", soldTracked: "sales tracked: {n}",
       hints: { "Rychlé jednání": "quick deal", "Při rychlém jednání sleva": "discount for a quick deal", "Potřebuji prodat": "need to sell", "Dohoda možná": "negotiable", "Rodinné auto": "family car", "Dědictví": "inheritance" },
     },
@@ -299,6 +321,8 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "без STK (техогляду)", wRepair: "потребує ремонту", wImport: "імпорт без історії?", wLowKm: "підозріло малий пробіг — перевірте VIN",
       wChain: "мережевий салон: уточніть, чи не залежить ціна від кредиту або дод. послуг", wCheap: "занадто дешево — перевірте на шахрайство і приховані дефекти",
       hMove: "Переїзд / нове авто",
+      sellerSays: "Пише продавець", aiTitle: "Перевірка ШІ за фото й описом", aiScore: "зовнішній вигляд {s}/5", aiOk: "без зауважень", aiCaution: "є зауваження", aiNoPhotos: "фото непридатні для оцінки", aiPhoto: "фото", rejectedSub: "відсіяно після перевірки описів і фото: {n}",
+      defects: {"not_running": "не на ходу", "parts_or_repair": "на запчастини або в ремонт", "engine_failure": "несправний двигун", "gearbox_failure": "несправна КПП", "head_gasket": "прокладка ГБЦ", "overheating": "перегрів", "flood": "після повені", "crashed": "бита", "no_papers": "немає документів", "finance_only_price": "ціна лише з кредитом", "lease": "лізинг або оренда", "coolant_leak": "тече антифриз", "oil_leak": "тече масло", "oil_consumption": "їсть масло", "smoke": "димить", "clutch": "зчеплення", "flywheel": "маховик", "turbo": "турбіна", "dpf": "сажовий фільтр", "injectors": "форсунки", "warning_lights": "горить контрольна лампа", "electrical": "електрика", "suspension_brakes": "ходова або гальма", "rust": "іржа", "structural_rust": "наскрізна іржа", "no_stk": "немає STK", "repair_needed": "потрібен ремонт", "mileage_doubt": "пробіг під питанням", "body_cosmetic": "вм’ятини, подряпини", "glass": "тріщина скла", "tyres": "потрібна гума", "interior_wear": "знос салону", "ac": "кондиціонер", "accident_damage": "сліди аварії", "paint_mismatch": "перефарбовані деталі", "photos_insufficient": "мало або погані фото", "stock_or_other_car_photos": "фото не цього авто?", "other": "інше"},
       sellReal: "Реально продати", sellQuick: "швидко", sellTypical: "зазвичай", basisSold: "за {n} проданими схожими, продаються за ~{d} дн.", basisSoldN: "за {n} проданими схожими", basisPrivate: "за {n} оголошеннями приватних продавців, з урахуванням торгу", basisEstimate: "груба оцінка: мало даних", net: "Чистими після витрат ~{c} Kč:", soldTracked: "відстежено продажів: {n}",
       hints: { "Rychlé jednání": "швидке рішення", "Při rychlém jednání sleva": "знижка за швидку угоду", "Potřebuji prodat": "потрібно продати", "Dohoda možná": "можливий торг", "Rodinné auto": "сімейне авто", "Dědictví": "спадщина" },
     },
@@ -327,6 +351,8 @@ footer { color: var(--muted); font-size: 12.5px; }
       wNoStk: "bez platné STK", wRepair: "vyžaduje opravu", wImport: "dovoz bez historie?", wLowKm: "podezřele nízký nájezd — ověřte VIN",
       wChain: "síťový prodejce: ověřte, zda cena nezávisí na úvěru či doplňkových službách", wCheap: "podezřele levné — ověřte podvod a skryté vady",
       hMove: "Stěhování / nové auto",
+      sellerSays: "Prodejce píše", aiTitle: "Kontrola AI z fotek a popisu", aiScore: "vzhled {s}/5", aiOk: "bez výhrad", aiCaution: "má výhrady", aiNoPhotos: "fotky nejsou použitelné", aiPhoto: "foto", rejectedSub: "vyřazeno po kontrole popisů a fotek: {n}",
+      defects: {"not_running": "nepojízdné", "parts_or_repair": "na díly nebo na opravu", "engine_failure": "závada motoru", "gearbox_failure": "závada převodovky", "head_gasket": "těsnění pod hlavou", "overheating": "přehřívání", "flood": "po povodni", "crashed": "havarované", "no_papers": "bez dokladů", "finance_only_price": "cena jen při financování", "lease": "leasing nebo pronájem", "coolant_leak": "ztráta chladicí kapaliny", "oil_leak": "únik oleje", "oil_consumption": "spotřeba oleje", "smoke": "kouří", "clutch": "spojka", "flywheel": "dvouhmotový setrvačník", "turbo": "turbo", "dpf": "DPF", "injectors": "vstřikovače", "warning_lights": "svítí kontrolka", "electrical": "elektrika", "suspension_brakes": "podvozek nebo brzdy", "rust": "koroze", "structural_rust": "prorezlá karoserie", "no_stk": "bez STK", "repair_needed": "potřebuje opravu", "mileage_doubt": "nejistý nájezd", "body_cosmetic": "ťukance, škrábance", "glass": "prasklé sklo", "tyres": "nutné pneu", "interior_wear": "opotřebený interiér", "ac": "klimatizace", "accident_damage": "stopy po nehodě", "paint_mismatch": "přelakované díly", "photos_insufficient": "málo nebo špatné fotky", "stock_or_other_car_photos": "fotky jiného auta?", "other": "jiné"},
       sellReal: "Reálně prodáte za", sellQuick: "rychle", sellTypical: "běžně", basisSold: "podle {n} prodaných podobných vozů, prodají se za ~{d} dní", basisSoldN: "podle {n} prodaných podobných vozů", basisPrivate: "podle {n} inzerátů soukromníků, po smlouvání", basisEstimate: "hrubý odhad: málo dat", net: "Čistý zisk po nákladech ~{c} Kč:", soldTracked: "sledováno prodejů: {n}",
       hints: {},
     },
@@ -406,6 +432,8 @@ footer { color: var(--muted); font-size: 12.5px; }
     $("r-time").textContent = m.run_at || "—";
     $("r-ago").textContent = ago(m.run_at);
     $("r-checked").textContent = fmt(m.listings_checked);
+    const dropped = (m.rejected_by_description || 0) + ((m.ai && m.ai.rejected) || 0);
+    $("r-rejected").textContent = dropped ? t("rejectedSub", { n: fmt(dropped) }) : "";
     $("r-comps").textContent = fmt(m.comparables);
     $("r-sold").textContent = m.sold_tracked != null ? t("soldTracked", { n: fmt(m.sold_tracked) }) : "";
     $("r-deals").textContent = fmt(state.deals.filter((d) => ["new", "interested", "contacted"].includes(statusOf(d))).length);
@@ -470,6 +498,35 @@ footer { color: var(--muted); font-size: 12.5px; }
       </div>`;
   }
 
+  const defectName = (code) => ((I18N[lang].defects || {})[code.replace(/^ai:/, "")]) || I18N.ru.defects[code] || code;
+
+  function sellerBlock(d) {
+    const xs = (d.defects || []).filter((x) => x.sev !== "critical");
+    if (!xs.length) return "";
+    return `<div class="seller-says"><div class="ss-k">${esc(t("sellerSays"))}</div>${xs.map((x) =>
+      `<div class="ss-row ${x.sev}"><span class="ss-name">${x.sev === "serious" ? "⚠ " : ""}${esc(defectName(x.code))}</span>
+       <span class="ss-q" lang="cs">«${esc(x.quote)}»</span></div>`).join("")}</div>`;
+  }
+
+  function aiBlock(d) {
+    const a = d.ai_check;
+    if (!a) return "";
+    const issues = (a.issues || []).filter((i) => i.severity !== "critical");
+    const verdict = a.verdict === "ok" ? t("aiOk") : t("aiCaution");
+    return `<div class="ai ${a.verdict}"><div class="ai-head"><span class="ai-k">${esc(t("aiTitle"))}</span>
+        <span class="ai-score s${a.condition_score}">${esc(t("aiScore", { s: a.condition_score }))}</span>
+        <span class="ai-verdict">${esc(verdict)}</span></div>
+      <div class="ai-sum">${esc((a.summary || {})[lang] || (a.summary || {}).ru || "")}${a.photos_usable === false ? " · " + esc(t("aiNoPhotos")) : ""}</div>
+      ${issues.length ? `<ul class="ai-issues">${issues.map((i) => `<li class="${i.severity}">${esc(defectName(i.code))}${i.source === "photo" ? ` (${esc(t("aiPhoto"))})` : ""}: <span ${i.source === "description" ? 'lang="cs"' : ""}>${esc(i.evidence)}</span></li>`).join("")}</ul>` : ""}
+    </div>`;
+  }
+
+  function photo(d) {
+    const src = (d.photos && d.photos[0]) || d.image;
+    if (!src) return "";
+    return `<a class="ph" href="${esc(d.url)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></a>`;
+  }
+
   function card(d) {
     const st = statusOf(d);
     const id = esc(d._id);
@@ -507,10 +564,13 @@ footer { color: var(--muted); font-size: 12.5px; }
     const fresh = st === "new" && found && Date.now() - found < 24 * 3600 * 1000;
     return `<article class="card ${fresh ? "is-new" : ""}">
       <div>
+        ${photo(d)}
         <div class="head"><span class="plate"><span class="eu">CZ</span><span class="t">${esc(d.year)}</span></span><span class="chip">${esc(d.model)}</span></div>
         <div class="title"><a href="${esc(d.url)}" target="_blank" rel="noopener" lang="cs">${esc(d.title)}</a></div>
         <div class="facts">${facts}</div>
         <div class="chips">${chips}</div>
+        ${sellerBlock(d)}
+        ${aiBlock(d)}
         ${vinRow(d)}
         ${desc}
       </div>

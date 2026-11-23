@@ -24,6 +24,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import defects as D
+
+# Bump when the description checks change: deals checked with an older version are re-read.
+CHECKS_VERSION = 2
+
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 SAUTO_SEARCH = "https://www.sauto.cz/api/v1/items/search"
 SAUTO_ITEM = "https://www.sauto.cz/api/v1/items/{id}"
@@ -68,37 +73,8 @@ HOT = [
 ]
 HOT_RE = [(label, re.compile(rx)) for label, rx in HOT]
 
-# Red flags that exclude a listing. A negation right before ("ne", "nikdy", "bez") cancels it.
-RED = [
-    ("на запчасти", r"na dily|rozprodam na dily"),
-    ("не на ходу", r"nepojizdn|nejede\b|nestartuje|nenastartuje"),
-    ("битая", r"havarovan|bouran|po havarii|po nehode|totalk|poskozen\w* (karoserie|predek|zadek|bok)"),
-    ("проблема с мотором", r"vadn\w* motor|motor (je )?(ko|na opravu|vadny|odesel)|bez motoru|zadren|klepe motor|poskozen\w* motor|vadn\w* prevodovk|prevodovka (je )?(ko|vadna)"),
-    ("цена только при кредите", r"(cena|plati) (plati )?(pri|s|v pripade) (financovan|uver|leasing)|pri financovani|s financovanim|cena pri uveru|cena na uver|akontac|na splatky bez"),
-    ("лизинг/аренда", r"prevzeti leasingu|odkup leasingu|pronajem|operativni leasing"),
-]
-RED_RE = [(label, re.compile(rx)) for label, rx in RED]
+# Titles of ads that are not a car for sale (wanted, buy-back, rent, swap, parts).
 TITLE_RED = re.compile(r"\b(koupim|vykup|vykoupim|pronajem|pronajmu|vymenim|na dily|dily|nahradni)\b")
-WARN = [
-    ("без STK (техосмотра)", r"bez stk|stk propadla|propadl\w* stk"),
-    ("требует ремонта", r"nutn\w* oprav|potrebuje oprav|potreba oprav|sviti kontrolka|kontrolka motoru|chyba dpf|vymenit spojk|nutna vymena"),
-    ("импорт без истории?", r"dovoz bez|bez servisni (knizky|historie)"),
-]
-WARN_RE = [(label, re.compile(rx)) for label, rx in WARN]
-NEGATION_BEFORE = re.compile(r"(\bne|nikdy|bez|nebyl[oa]?|nebyly|zadn[ey]|zadna|neni|nemel[oa]?)\s*$")
-
-
-def find_flags(text, rules):
-    t = norm(text)
-    out = []
-    for label, rx in rules:
-        for m in rx.finditer(t):
-            before = t[max(0, m.start() - 22):m.start()]
-            if t[max(0, m.start() - 2):m.start()] == "ne" or NEGATION_BEFORE.search(before):
-                continue
-            out.append(label)
-            break
-    return out
 
 
 def hot_keywords(text):
@@ -312,6 +288,8 @@ def sauto_enrich(http, row):
         row["engine"] = f"{round(r['engine_volume'] / 1000, 1):.1f}"
     row["stk"] = (r.get("stk_date") or "")[:7]
     row["origin"] = (r.get("country_of_origin_cb") or {}).get("name")
+    urls = [(i.get("url") or "") for i in (r.get("images") or [])]
+    row["photos"] = [("https:" + u) if u.startswith("//") else u for u in urls if u][:10]
     return True
 
 
@@ -419,6 +397,8 @@ def bazos_enrich(http, row):
         row["gearbox"] = "automat"
     row["private"] = not DEALER_RE.search(norm(row["text"]))
     row["vin"] = find_vin(desc)
+    nums = sorted({int(n) for n in re.findall(r"https://www\.bazos\.cz/img/(\d+)/\d+/" + re.escape(str(row["raw_id"])) + r"\.jpg", page)})
+    row["photos"] = [f"https://www.bazos.cz/img/{n}/{str(row['raw_id'])[-3:]}/{row['raw_id']}.jpg" for n in nums][:10]
     name = re.search(r"Jméno:.*?<b>(.*?)</b>", page, re.S) or re.search(r"Jméno:</td><td[^>]*>(.*?)</td>", page, re.S)
     if name:
         row["seller"] = strip_tags(name.group(1))[:60]
@@ -632,6 +612,8 @@ def score(row, cfg):
     if row["comps"] < 10 or row["comps_basis"].startswith("модель") or "топливо не указано" in row["comps_basis"]:
         pts -= 5  # rough market estimate
     pts -= 6 * len(row["warnings"])
+    sev = [d["sev"] for d in row.get("defects", [])]
+    pts -= min(25, 10 * sev.count("serious")) + min(6, 2 * sev.count("minor"))
     if "profit_typical" in row:
         pts += max(-6, min(8, row["profit_typical"] / 5000))
     if row["discount"] > 0.5:
@@ -659,7 +641,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="config.json")
     ap.add_argument("--out", default="out")
-    ap.add_argument("--seen", help="JSON list of ids already in the feed (they skip the slow detail step)")
+    ap.add_argument("--seen", help="JSON list of ids already checked (they skip the slow detail step)")
+    ap.add_argument("--feed", help="site data (docs/data/deals.json): deals already checked with the current rules are not re-read")
     ap.add_argument("--models", help="comma-separated subset of model names (debug)")
     ap.add_argument("--no-bazos", action="store_true")
     ap.add_argument("--no-phrases", action="store_true")
@@ -668,6 +651,11 @@ def main():
 
     cfg = json.load(open(args.config, encoding="utf-8"))
     seen = {x.replace("-", ":", 1) for x in json.load(open(args.seen))} if args.seen else set()
+    if args.feed:
+        import os
+        if os.path.exists(args.feed):
+            seen |= {d["id"] for d in json.load(open(args.feed, encoding="utf-8"))["deals"]
+                     if d.get("checks_version", 0) >= CHECKS_VERSION}
     models = cfg["models"]
     if args.models:
         wanted = [w.strip().lower() for w in args.models.split(",")]
@@ -747,7 +735,8 @@ def main():
         if r["discount"] >= floor - 0.03:
             pre.append(r)
 
-    # 5. Full descriptions (phrases and red flags live there) for the new ones, phrase hits first.
+    # 5. Full descriptions for every candidate not checked yet: defects and phrases live there.
+    #    A candidate whose description could not be read this run is not published (next run retries).
     pre.sort(key=lambda r: (bool(r["kw_query"]), r["discount"] + (0.1 if r["private"] else 0)), reverse=True)
     for r in pre:
         if budget <= 0:
@@ -764,18 +753,26 @@ def main():
                 price_it(r)
 
     # 6. Final verdict.
-    deals, dropped = [], {}
+    deals, dropped, rejected, pending = [], {}, [], 0
     for r in pre:
-        r["red_flags"] = find_flags(r["text"], RED_RE)
-        if r["red_flags"]:
-            for f in r["red_flags"]:
-                dropped[f] = dropped.get(f, 0) + 1
+        checked = "description" in r
+        if not checked and r["id"] not in seen:
+            pending += 1
+            continue  # never publish an ad whose description nobody has read
+        r["defects"] = D.analyze(r["text"])
+        critical = [d for d in r["defects"] if d["sev"] == "critical"]
+        if critical:
+            for d in critical:
+                dropped[d["code"]] = dropped.get(d["code"], 0) + 1
+            rejected.append({"id": r["id"], "codes": [d["code"] for d in critical], "quote": critical[0]["quote"]})
             continue
+        if not checked:
+            r.pop("defects")  # known deal: its full-text check from an earlier run stays on the site
         r["hot"] = hot_keywords(r["text"])
         if r["kw_query"] and not r["hot"] and r["source"] == "sauto" and "description" not in r:
             # Sauto's full-text search already matched the phrase in the (unread) description.
             r["hot"] = hot_keywords(" ".join(r["kw_query"]))
-        r["warnings"] = find_flags(r["text"], WARN_RE)
+        r["warnings"] = []
         age = max(0.5, YEAR_NOW - r["year"] + (NOW.month - 6) / 12)
         if age >= 5 and r["km"] / age < 6000:
             r["warnings"].append("подозрительно малый пробег — проверить по VIN")
@@ -794,11 +791,13 @@ def main():
         r["message_cz"] = message_cz(r)
         r["new"] = r["id"] not in seen
         r["found_at"] = NOW.strftime("%Y-%m-%d %H:%M")
-        r["checked_full_text"] = "description" in r
+        r["checked_full_text"] = checked
+        if checked:
+            r["checks_version"] = CHECKS_VERSION
         for k in ("text", "raw_id", "snippet_only", "kw_query", "red_flags"):
             r.pop(k, None)
         if "description" in r:
-            r["description"] = r["description"][:700]
+            r["description"] = r["description"][:1500]
         deals.append(r)
 
     # Same car posted on both sites or twice: keep the best-scored copy.
@@ -818,13 +817,14 @@ def main():
         "with_phrases": sum(bool(d["hot"]) for d in deals), "dropped_red_flags": dropped,
         "sold_tracked": sold_total, "resale_from_sales": sum(d["resale_basis"] == "sold" for d in deals),
         "resale_costs": cfg.get("resale_costs", 6000),
+        "rejected_by_description": len(rejected), "pending_unchecked": pending, "checks_version": CHECKS_VERSION,
     }
     # Every Sauto listing, for history.py (detects sold cars: ads that disappear).
     cols = ["id", "model", "year", "km", "fuel", "gearbox", "engine", "perf", "private", "created", "price"]
     json.dump({"complete_models": complete_models, "columns": cols,
                "items": [[int(r["id"].split(":", 1)[1]) if k == "id" else r.get(k) for k in cols] for r in sauto_all]},
               open(f"{args.out}/sauto_listings.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    json.dump({"stats": stats, "deals": deals}, open(f"{args.out}/deals.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    json.dump({"stats": stats, "deals": deals, "rejected": rejected}, open(f"{args.out}/deals.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(json.dumps(stats, ensure_ascii=False), file=sys.stderr)
     for d in deals[:30]:
         print(f"{d['score']:>5} {'NEW' if d['new'] else '   '} {d['source']:<5} {d['model']:<15} {d['year']} "

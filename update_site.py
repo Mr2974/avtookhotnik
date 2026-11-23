@@ -68,6 +68,28 @@ def resale_line(d):
             f"чистыми {sign(d['profit_quick'])}…{sign(d['profit_typical'])} тыс.")
 
 
+DEFECT_RU = {
+    "not_running": "не на ходу", "parts_or_repair": "на запчасти / в ремонт", "engine_failure": "неисправен двигатель",
+    "gearbox_failure": "неисправна КПП", "head_gasket": "прокладка ГБЦ", "overheating": "перегрев", "flood": "после наводнения",
+    "crashed": "битая", "no_papers": "нет документов", "finance_only_price": "цена только при кредите", "lease": "лизинг/аренда",
+    "coolant_leak": "уходит антифриз", "oil_leak": "течёт масло", "oil_consumption": "ест масло", "smoke": "дымит",
+    "clutch": "сцепление", "flywheel": "маховик", "turbo": "турбина", "dpf": "сажевый фильтр", "injectors": "форсунки",
+    "warning_lights": "горит ошибка/контролька", "electrical": "электрика", "suspension_brakes": "ходовая/тормоза",
+    "rust": "ржавчина", "no_stk": "нет STK", "repair_needed": "нужен ремонт", "mileage_doubt": "пробег под вопросом",
+    "body_cosmetic": "вмятины/царапины", "glass": "трещина стекла", "tyres": "нужна резина", "interior_wear": "износ салона",
+    "ac": "кондиционер",
+}
+
+
+def defects_line(d):
+    serious = [x for x in d.get("defects", []) if x["sev"] == "serious"]
+    parts = [f"⚠️ {DEFECT_RU.get(x['code'], x['code'])}: «{x['quote'].strip('…')[:90]}»" for x in serious[:2]]
+    ai = d.get("ai_check") or {}
+    if ai.get("condition_score"):
+        parts.append(f"🔍 фото: {ai['condition_score']}/5 — {ai.get('summary', {}).get('ru', '')[:120]}")
+    return "\n".join(parts)
+
+
 def card(d, prefix=""):
     tags = []
     tags.append("частник" if d.get("private") else "дилер")
@@ -77,6 +99,7 @@ def card(d, prefix=""):
             f"<b>{n(d['price'])} Kč</b> — рынок ≈ {n(d['market'])} (−{round(d['discount'] * 100)}%)\n"
             f"{html.escape(resale_line(d))}\n"
             f"{html.escape(' · '.join(tags))}\n"
+            + (html.escape(defects_line(d)) + "\n" if defects_line(d) else "") +
             f"<a href=\"{html.escape(d['url'])}\">{html.escape(d['title'][:60])}</a>")
 
 
@@ -88,6 +111,8 @@ def main():
     now = stats["run_at"]
     found_ids = set()
     new, cheaper = [], []
+    # Ads the bot rejected after reading them (not running, engine failure, for parts, ...): out of the feed.
+    removed = [r["id"] for r in scan.get("rejected", []) if by_id.pop(r["id"], None) is not None]
 
     for d in found:
         found_ids.add(d["id"])
@@ -103,11 +128,21 @@ def main():
         hist = old.get("price_history") or [[old.get("first_found_at", now), old["price"]]]
         if hist[-1][1] != d["price"]:
             hist.append([now, d["price"]])
+        if d.get("checks_version"):
+            # Re-read this run with the current checks: take everything new, keep the history.
+            fresh = dict(d, first_found_at=old.get("first_found_at", now), last_seen_at=now, live=True, price_history=hist[-10:])
+            fresh.pop("new", None)
+            if "ai_check" not in fresh and old.get("ai_check"):
+                fresh["ai_check"] = old["ai_check"]
+            by_id[d["id"]] = fresh
+            continue
         # Known car: refresh what the quick scan re-measured, keep what only the full read knows.
         old.update(live=True, last_seen_at=now, price=d["price"], market=d["market"], comps=d["comps"],
                    comps_basis=d["comps_basis"], discount=d["discount"], resale_margin=d["resale_margin"],
                    offer=d["offer"], price_history=hist[-10:],
                    **{f: d[f] for f in RESALE_FIELDS if f in d})
+        if d.get("ai_check"):
+            old["ai_check"] = d["ai_check"]
 
     cutoff = (dt.datetime.now() - dt.timedelta(days=KEEP_DAYS_AFTER_GONE)).strftime("%Y-%m-%d %H:%M")
     for k in list(by_id):
@@ -121,9 +156,10 @@ def main():
     os.makedirs(DATA, exist_ok=True)
     json.dump({"deals": deals}, open(f"{DATA}/deals.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     meta = dict(stats, new_added=len(new), cheaper=len(cheaper), live=sum(d.get("live", False) for d in deals),
-                total=len(deals), telegram_url=os.environ.get("TELEGRAM_INVITE", ""))
+                total=len(deals), removed_after_check=len(removed), ai=scan.get("ai"),
+                telegram_url=os.environ.get("TELEGRAM_INVITE", ""))
     json.dump(meta, open(f"{DATA}/meta.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    print(f"new={len(new)} cheaper={len(cheaper)} live={meta['live']} total={len(deals)}")
+    print(f"new={len(new)} cheaper={len(cheaper)} removed={len(removed)} live={meta['live']} total={len(deals)}")
 
     site = os.environ.get("SITE_URL", "")
     if not new and not cheaper:

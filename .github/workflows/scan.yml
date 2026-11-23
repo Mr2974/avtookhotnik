@@ -26,6 +26,7 @@ jobs:
     timeout-minutes: 40
     env:
       TZ: Europe/Prague
+      HAS_AI_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -63,14 +64,17 @@ jobs:
             echo "Истории пока нет, начинаю с нуля"
           fi
 
-      - name: Список уже найденных машин
-        if: steps.gate.outputs.run == 'true'
-        run: |
-          python3 -c "import json,os; p='docs/data/deals.json'; d=json.load(open(p))['deals'] if os.path.exists(p) else []; json.dump([x['id'] for x in d], open('seen.json','w'))"
-
       - name: Поиск на Sauto.cz и Bazoš.cz
         if: steps.gate.outputs.run == 'true'
-        run: python3 car_hunter.py --config config.json --out out --seen seen.json --history history
+        run: python3 car_hunter.py --config config.json --out out --feed docs/data/deals.json --history history
+
+      - name: Проверка фото и описаний ИИ (если задан ANTHROPIC_API_KEY)
+        if: steps.gate.outputs.run == 'true' && env.HAS_AI_KEY == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          pip install -q anthropic
+          python3 ai_check.py --deals out/deals.json --feed docs/data/deals.json --config config.json
 
       - name: Обновить сайт и отправить уведомление
         if: steps.gate.outputs.run == 'true'
