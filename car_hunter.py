@@ -860,8 +860,11 @@ def main():
         if r["id"] in seen:
             continue
         if r["source"] == "sauto" and "description" not in r:
+            had_engine = r.get("engine")
             sauto_enrich(http, r)
             budget -= 1
+            if r.get("engine") and not had_engine:
+                price_it(r)  # the engine size from the ad page allows a tighter comparison
         elif r["source"] == "bazos" and r.get("snippet_only"):
             bazos_enrich(http, r)
             budget -= 1

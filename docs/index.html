@@ -786,6 +786,9 @@ footer { color: var(--muted); font-size: 12.5px; }
     const m = market.models.find((x) => x.name === row.model);
     const bounds = m ? m.generations : [];
     const pool = (market.comps[row.model] || []).map((r) => decode(r, false));
+    // The ad itself may be in the data (Sauto, Bazoš): compare it with the others, not with itself.
+    const self = pool.findIndex((c) => c.year === row.year && Math.abs(c.km - row.km) <= 500 && Math.abs(c.price - row.price) <= 100);
+    if (self >= 0) pool.splice(self, 1);
     const mk = withFuelFallback(row, (r) => {
       const got = selectComps(r, pool, bounds, NEED_MARKET);
       if (!got) return null;
