@@ -20,7 +20,7 @@ import urllib.request
 import datetime as dt
 
 DATA = "docs/data"
-RESALE_FIELDS = ("resale_basis", "resale_n", "resale_comps_basis", "liquidity", "score",
+RESALE_FIELDS = ("resale_basis", "resale_n", "resale_comps_basis", "resale_conf", "liquidity", "score",
                  "list_quick", "list_typical", "list_max", "resale_quick", "resale_typical", "resale_max",
                  "profit_quick", "profit_typical", "profit_max")
 LIQ_RU = {"fast": "продаётся быстро", "medium": "продаётся средне", "slow": "продаётся медленно"}

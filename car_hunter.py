@@ -580,12 +580,20 @@ def estimate_resale(row, comps_by_model, sold_by_model, gens_by_model, cfg):
     else:
         kind, n, basis, haggle = "estimate", 0, "", (0.95, 0.95, 0.95)
         ask_q, ask_t, ask_m = row["market"] * 0.86 / 0.95, row["market"] * 0.92 / 0.95, row["market"]
+    if kind != "estimate":
+        # Anchor to the whole market (dealers + private, the tighter comparison): to sell fast you list
+        # below it, and few comparables must not promise more than the market pays.
+        caps = cfg.get("resale_caps", [0.92, 1.0, 1.10])
+        ask_q, ask_t, ask_m = (min(a, row["market"] * c) for a, c in zip((ask_q, ask_t, ask_m), caps))
+        if n < 8:  # few comparables: be careful
+            ask_q, ask_t, ask_m = ask_q * 0.97, ask_t * 0.97, ask_m * 0.97
     ask_t, ask_m = max(ask_t, ask_q), max(ask_m, ask_t, ask_q)
     get_q, get_t, get_m = ask_q * haggle[0], ask_t * haggle[1], ask_m * haggle[2]
     get_t, get_m = max(get_t, get_q), max(get_m, get_t, get_q)
     costs = cfg.get("resale_costs", 6000)
     r100 = lambda v: int(round(v / 100.0) * 100)
-    out = {"resale_basis": kind, "resale_n": n, "resale_comps_basis": basis}
+    out = {"resale_basis": kind, "resale_n": n, "resale_comps_basis": basis,
+           "resale_conf": "low" if kind == "estimate" or n < 8 else "ok"}
     for tier, ask, get in (("quick", ask_q, get_q), ("typical", ask_t, get_t), ("max", ask_m, get_m)):
         out[f"list_{tier}"] = r100(ask)
         out[f"resale_{tier}"] = r100(get)
