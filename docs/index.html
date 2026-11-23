@@ -196,6 +196,25 @@ footer { color: var(--muted); font-size: 12.5px; }
 .liq.slow { color: var(--warn); }
 .rs-note { font-size: 11.5px; color: var(--muted); }
 .tabnote { margin-bottom: 2px; }
+.calc { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.calc-toggle { width: 100%; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; text-align: left; background: none; border: 0; padding: 14px 16px; cursor: pointer; color: var(--fg); font: inherit; }
+.calc-toggle::after { content: "▾"; margin-left: auto; color: var(--muted); }
+.calc-toggle[aria-expanded="true"]::after { content: "▴"; }
+.ct-t { font-weight: 600; font-size: 16px; }
+.ct-h { color: var(--muted); font-size: 13px; }
+.calc-body { padding: 0 16px 16px; display: grid; gap: 12px; }
+.fld { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.fld input, .fld select, .fld textarea { font: 14px var(--f-body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; width: 100%; min-width: 0; }
+.fld textarea { resize: vertical; }
+.calc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+.fld-chk { align-self: center; }
+.calc-msg { color: var(--muted); font-size: 13.5px; }
+.calc-res { display: grid; gap: 8px; background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
+.cr-verdict { font-weight: 700; font-size: 17px; }
+.cr-verdict.great, .cr-verdict.good { color: var(--good); }
+.cr-verdict.fair { color: var(--fg); }
+.cr-verdict.high { color: var(--bad); }
+.calc-date { font-size: 11.5px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -220,6 +239,31 @@ footer { color: var(--muted); font-size: 12.5px; }
     <div><span class="k" data-i18n="checked">Проверено объявлений</span><span class="v" id="r-checked">—</span><span class="sub" id="r-rejected"></span></div>
     <div><span class="k" data-i18n="compsCount">Для сравнения цен</span><span class="v" id="r-comps">—</span><span class="sub" id="r-sold"></span></div>
     <div><span class="k" data-i18n="liveCount">Актуальных находок</span><span class="v accent" id="r-deals">—</span></div>
+  </section>
+
+  <section class="calc" id="calc">
+    <button class="calc-toggle" id="calc-toggle" aria-expanded="false" aria-controls="calc-body">
+      <span class="ct-t" data-i18n="calcTitle">Проверить машину</span>
+      <span class="ct-h" data-i18n="calcHint">объявление с Facebook или любого сайта</span>
+    </button>
+    <div class="calc-body" id="calc-body" hidden>
+      <label class="fld wide" for="c-paste"><span data-i18n="calcPaste">Вставьте текст объявления — поля заполнятся сами</span>
+        <textarea id="c-paste" rows="3"></textarea></label>
+      <div class="calc-grid">
+        <label class="fld" for="c-model"><span data-i18n="cModel">Модель</span><select id="c-model"></select></label>
+        <label class="fld" for="c-year"><span data-i18n="cYear">Год</span><input id="c-year" type="number" inputmode="numeric" min="1995" max="2030"></label>
+        <label class="fld" for="c-km"><span data-i18n="cKm">Пробег, км</span><input id="c-km" type="number" inputmode="numeric" min="0" step="1000"></label>
+        <label class="fld" for="c-price"><span data-i18n="cPrice">Цена, Kč</span><input id="c-price" type="number" inputmode="numeric" min="0" step="1000"></label>
+        <label class="fld" for="c-fuel"><span data-i18n="cFuel">Топливо</span><select id="c-fuel">
+          <option value="" data-i18n="cUnknown">не знаю</option><option value="b" data-i18n="benzin">бензин</option>
+          <option value="n" data-i18n="nafta">дизель</option><option value="h" data-i18n="hybrid">гибрид</option><option value="e" data-i18n="elektro">электро</option></select></label>
+        <label class="fld" for="c-gear"><span data-i18n="cGear">Коробка</span><select id="c-gear">
+          <option value="" data-i18n="cUnknown">не знаю</option><option value="m" data-i18n="manual">механика</option><option value="a" data-i18n="automat">автомат</option></select></label>
+        <label class="fld" for="c-engine"><span data-i18n="cEngine">Объём двигателя</span><input id="c-engine" placeholder="1.6" inputmode="decimal"></label>
+        <label class="chk fld-chk"><input type="checkbox" id="c-perf"> <span data-i18n="cPerf">спортивная версия (RS, GTI, ST…)</span></label>
+      </div>
+      <div class="calc-out" id="calc-out" aria-live="polite"></div>
+    </div>
   </section>
 
   <div class="bar" role="toolbar" id="bar">
@@ -279,7 +323,8 @@ footer { color: var(--muted); font-size: 12.5px; }
       bEngine: "тот же двигатель", bFuelGear: "то же топливо и КПП", bFuel: "то же топливо", bModel: "та же модель", bKm: "±{k} тыс. км", bNoFuel: "топливо не указано",
       wNoStk: "без STK (техосмотра)", wRepair: "требует ремонта", wImport: "импорт без истории?", wLowKm: "подозрительно малый пробег — проверить по VIN",
       wChain: "сетевой салон: уточните, не зависит ли цена от кредита или доп. услуг", wCheap: "слишком дёшево — проверить на мошенничество и скрытые дефекты",
-      hMove: "Переезд / новое авто", lowData: "мало похожих — оценка неточная",
+      hMove: "Переезд / новое авто",
+      calcTitle: "Проверить машину", calcHint: "объявление с Facebook или любого сайта", calcPaste: "Вставьте текст объявления — поля заполнятся сами", cModel: "Модель", cChoose: "выберите", cYear: "Год", cKm: "Пробег, км", cPrice: "Цена, Kč", cFuel: "Топливо", cGear: "Коробка", cEngine: "Объём двигателя", cPerf: "спортивная версия (RS, GTI, ST…)", cUnknown: "не знаю", cNeed: "Укажите модель, год, пробег и цену", cNoComps: "Слишком мало похожих объявлений для оценки", cNoData: "Данные для калькулятора появятся после ближайшего поиска", cLoading: "Загружаю данные рынка…", vGreat: "{p} % ниже рынка — стоит смотреть", vGood: "{p} % ниже рынка", vFair: "около рынка ({s} %)", vHigh: "{p} % дороже рынка", cProfitable: "выгодно для перепродажи", cDataDate: "данные рынка от {d}", lowData: "мало похожих — оценка неточная",
       profitable: "Выгодные", tierQuick: "⚡ Быстро", tierTypical: "● Обычно", tierMax: "⏳ Максимум", listAt: "выставить", daysApprox: "≈{d} дн.", howToResell: "Как перепродать", netNote: "прибыль — чистыми, после торга и расходов ~{c} Kč", liqFast: "продаётся быстро", liqMedium: "продаётся средне", liqSlow: "продаётся медленно", liqBasisSold: "по {n} продажам", liqBasisAge: "по возрасту объявлений", profitNote: "Машины, на которых даже при быстрой продаже остаётся от {p} Kč чистыми — после торга и расходов ~{c} Kč. Только там, где цена продажи посчитана по частным объявлениям или реальным продажам, без серьёзных неисправностей и не медленно продающиеся модели.", sortYearNew: "Сначала новее", sortYearOld: "Сначала старше", sortSpeed: "Быстрее продаются", sortMargin: "Самая большая прибыль",
       sellerSays: "Пишет продавец", aiTitle: "Проверка ИИ по фото и описанию", aiScore: "внешний вид {s}/5", aiOk: "без замечаний", aiCaution: "есть замечания", aiNoPhotos: "фото непригодны для оценки", aiPhoto: "фото", rejectedSub: "отсеяно после проверки описаний и фото: {n}",
       defects: {"not_running": "не на ходу", "parts_or_repair": "на запчасти или в ремонт", "engine_failure": "неисправен двигатель", "gearbox_failure": "неисправна КПП", "head_gasket": "прокладка ГБЦ", "overheating": "перегрев", "flood": "после наводнения", "crashed": "битая", "no_papers": "нет документов", "finance_only_price": "цена только при кредите", "lease": "лизинг или аренда", "coolant_leak": "уходит антифриз", "oil_leak": "течёт масло", "oil_consumption": "ест масло", "smoke": "дымит", "clutch": "сцепление", "flywheel": "маховик", "turbo": "турбина", "dpf": "сажевый фильтр", "injectors": "форсунки", "warning_lights": "горит контролька", "electrical": "электрика", "suspension_brakes": "ходовая или тормоза", "rust": "ржавчина", "structural_rust": "сквозная ржавчина", "no_stk": "нет STK", "repair_needed": "нужен ремонт", "mileage_doubt": "пробег под вопросом", "body_cosmetic": "вмятины, царапины", "glass": "трещина стекла", "tyres": "нужна резина", "interior_wear": "износ салона", "ac": "кондиционер", "accident_damage": "следы аварии", "paint_mismatch": "перекрашенные детали", "photos_insufficient": "мало или плохие фото", "stock_or_other_car_photos": "фото не этой машины?", "other": "другое"},
@@ -310,7 +355,8 @@ footer { color: var(--muted); font-size: 12.5px; }
       bEngine: "same engine", bFuelGear: "same fuel and gearbox", bFuel: "same fuel", bModel: "same model", bKm: "±{k}k km", bNoFuel: "fuel not stated",
       wNoStk: "no valid STK (inspection)", wRepair: "needs repair", wImport: "import without history?", wLowKm: "suspiciously low mileage — check the VIN",
       wChain: "dealer chain: ask whether the price depends on financing or extras", wCheap: "too cheap — check for fraud and hidden defects",
-      hMove: "Moving / new car", lowData: "few comparables — rough estimate",
+      hMove: "Moving / new car",
+      calcTitle: "Check a car", calcHint: "an ad from Facebook or any site", calcPaste: "Paste the ad text and the fields fill in", cModel: "Model", cChoose: "choose", cYear: "Year", cKm: "Mileage, km", cPrice: "Price, Kč", cFuel: "Fuel", cGear: "Gearbox", cEngine: "Engine size", cPerf: "performance version (RS, GTI, ST…)", cUnknown: "not sure", cNeed: "Enter the model, year, mileage and price", cNoComps: "Too few similar ads to estimate", cNoData: "Calculator data appears after the next search", cLoading: "Loading market data…", vGreat: "{p} % below market — worth a look", vGood: "{p} % below market", vFair: "about market price ({s} %)", vHigh: "{p} % above market", cProfitable: "good for resale", cDataDate: "market data from {d}", lowData: "few comparables — rough estimate",
       profitable: "Best profit", tierQuick: "⚡ Quick", tierTypical: "● Typical", tierMax: "⏳ Max", listAt: "list at", daysApprox: "≈{d} days", howToResell: "How to resell", netNote: "profit is net, after haggling and ~{c} Kč costs", liqFast: "sells fast", liqMedium: "sells at a normal pace", liqSlow: "sells slowly", liqBasisSold: "from {n} sales", liqBasisAge: "from the age of current ads", profitNote: "Cars that leave at least {p} Kč net even on a quick sale, after haggling and ~{c} Kč costs. Only where the sale price comes from private ads or real sales, with no serious defects and not a slow-selling model.", sortYearNew: "Newest first", sortYearOld: "Oldest first", sortSpeed: "Sells fastest", sortMargin: "Biggest profit",
       sellerSays: "The seller writes", aiTitle: "AI check of photos and text", aiScore: "condition {s}/5", aiOk: "nothing notable", aiCaution: "has issues", aiNoPhotos: "photos not usable for a verdict", aiPhoto: "photo", rejectedSub: "dropped after checking texts and photos: {n}",
       defects: {"not_running": "not running", "parts_or_repair": "sold for parts or repair", "engine_failure": "engine fault", "gearbox_failure": "gearbox fault", "head_gasket": "head gasket", "overheating": "overheating", "flood": "flood damage", "crashed": "accident damage", "no_papers": "no papers", "finance_only_price": "price only with financing", "lease": "lease or rent", "coolant_leak": "coolant loss", "oil_leak": "oil leak", "oil_consumption": "burns oil", "smoke": "smokes", "clutch": "clutch", "flywheel": "dual-mass flywheel", "turbo": "turbo", "dpf": "DPF", "injectors": "injectors", "warning_lights": "warning light on", "electrical": "electrics", "suspension_brakes": "suspension or brakes", "rust": "rust", "structural_rust": "structural rust", "no_stk": "no valid STK", "repair_needed": "needs repair", "mileage_doubt": "mileage in doubt", "body_cosmetic": "dents, scratches", "glass": "cracked glass", "tyres": "tyres needed", "interior_wear": "interior wear", "ac": "air conditioning", "accident_damage": "accident traces", "paint_mismatch": "repainted panels", "photos_insufficient": "few or poor photos", "stock_or_other_car_photos": "photos may not be this car", "other": "other"},
@@ -341,7 +387,8 @@ footer { color: var(--muted); font-size: 12.5px; }
       bEngine: "той самий двигун", bFuelGear: "те саме пальне і КПП", bFuel: "те саме пальне", bModel: "та сама модель", bKm: "±{k} тис. км", bNoFuel: "пальне не вказано",
       wNoStk: "без STK (техогляду)", wRepair: "потребує ремонту", wImport: "імпорт без історії?", wLowKm: "підозріло малий пробіг — перевірте VIN",
       wChain: "мережевий салон: уточніть, чи не залежить ціна від кредиту або дод. послуг", wCheap: "занадто дешево — перевірте на шахрайство і приховані дефекти",
-      hMove: "Переїзд / нове авто", lowData: "мало схожих — оцінка неточна",
+      hMove: "Переїзд / нове авто",
+      calcTitle: "Перевірити авто", calcHint: "оголошення з Facebook чи будь-якого сайту", calcPaste: "Вставте текст оголошення — поля заповняться самі", cModel: "Модель", cChoose: "оберіть", cYear: "Рік", cKm: "Пробіг, км", cPrice: "Ціна, Kč", cFuel: "Пальне", cGear: "Коробка", cEngine: "Об’єм двигуна", cPerf: "спортивна версія (RS, GTI, ST…)", cUnknown: "не знаю", cNeed: "Вкажіть модель, рік, пробіг і ціну", cNoComps: "Замало схожих оголошень для оцінки", cNoData: "Дані для калькулятора з’являться після найближчого пошуку", cLoading: "Завантажую дані ринку…", vGreat: "{p} % нижче ринку — варто дивитися", vGood: "{p} % нижче ринку", vFair: "близько ринку ({s} %)", vHigh: "{p} % дорожче ринку", cProfitable: "вигідно для перепродажу", cDataDate: "дані ринку від {d}", lowData: "мало схожих — оцінка неточна",
       profitable: "Вигідні", tierQuick: "⚡ Швидко", tierTypical: "● Зазвичай", tierMax: "⏳ Максимум", listAt: "виставити", daysApprox: "≈{d} дн.", howToResell: "Як перепродати", netNote: "прибуток — чистими, після торгу і витрат ~{c} Kč", liqFast: "продається швидко", liqMedium: "продається середньо", liqSlow: "продається повільно", liqBasisSold: "за {n} продажами", liqBasisAge: "за віком оголошень", profitNote: "Авто, на яких навіть при швидкому продажу лишається від {p} Kč чистими — після торгу і витрат ~{c} Kč. Лише там, де ціну продажу пораховано за приватними оголошеннями або реальними продажами, без серйозних несправностей і не моделі, що продаються повільно.", sortYearNew: "Спочатку новіші", sortYearOld: "Спочатку старші", sortSpeed: "Швидше продаються", sortMargin: "Найбільший прибуток",
       sellerSays: "Пише продавець", aiTitle: "Перевірка ШІ за фото й описом", aiScore: "зовнішній вигляд {s}/5", aiOk: "без зауважень", aiCaution: "є зауваження", aiNoPhotos: "фото непридатні для оцінки", aiPhoto: "фото", rejectedSub: "відсіяно після перевірки описів і фото: {n}",
       defects: {"not_running": "не на ходу", "parts_or_repair": "на запчастини або в ремонт", "engine_failure": "несправний двигун", "gearbox_failure": "несправна КПП", "head_gasket": "прокладка ГБЦ", "overheating": "перегрів", "flood": "після повені", "crashed": "бита", "no_papers": "немає документів", "finance_only_price": "ціна лише з кредитом", "lease": "лізинг або оренда", "coolant_leak": "тече антифриз", "oil_leak": "тече масло", "oil_consumption": "їсть масло", "smoke": "димить", "clutch": "зчеплення", "flywheel": "маховик", "turbo": "турбіна", "dpf": "сажовий фільтр", "injectors": "форсунки", "warning_lights": "горить контрольна лампа", "electrical": "електрика", "suspension_brakes": "ходова або гальма", "rust": "іржа", "structural_rust": "наскрізна іржа", "no_stk": "немає STK", "repair_needed": "потрібен ремонт", "mileage_doubt": "пробіг під питанням", "body_cosmetic": "вм’ятини, подряпини", "glass": "тріщина скла", "tyres": "потрібна гума", "interior_wear": "знос салону", "ac": "кондиціонер", "accident_damage": "сліди аварії", "paint_mismatch": "перефарбовані деталі", "photos_insufficient": "мало або погані фото", "stock_or_other_car_photos": "фото не цього авто?", "other": "інше"},
@@ -372,7 +419,8 @@ footer { color: var(--muted); font-size: 12.5px; }
       bEngine: "stejný motor", bFuelGear: "stejné palivo a převodovka", bFuel: "stejné palivo", bModel: "stejný model", bKm: "±{k} tis. km", bNoFuel: "palivo neuvedeno",
       wNoStk: "bez platné STK", wRepair: "vyžaduje opravu", wImport: "dovoz bez historie?", wLowKm: "podezřele nízký nájezd — ověřte VIN",
       wChain: "síťový prodejce: ověřte, zda cena nezávisí na úvěru či doplňkových službách", wCheap: "podezřele levné — ověřte podvod a skryté vady",
-      hMove: "Stěhování / nové auto", lowData: "málo podobných — odhad je hrubý",
+      hMove: "Stěhování / nové auto",
+      calcTitle: "Ověřit auto", calcHint: "inzerát z Facebooku nebo odkudkoli", calcPaste: "Vložte text inzerátu a pole se vyplní sama", cModel: "Model", cChoose: "vyberte", cYear: "Rok", cKm: "Nájezd, km", cPrice: "Cena, Kč", cFuel: "Palivo", cGear: "Převodovka", cEngine: "Objem motoru", cPerf: "sportovní verze (RS, GTI, ST…)", cUnknown: "nevím", cNeed: "Zadejte model, rok, nájezd a cenu", cNoComps: "Příliš málo podobných inzerátů pro odhad", cNoData: "Data pro kalkulačku budou po nejbližším hledání", cLoading: "Načítám data trhu…", vGreat: "{p} % pod trhem — stojí za pozornost", vGood: "{p} % pod trhem", vFair: "kolem tržní ceny ({s} %)", vHigh: "{p} % nad trhem", cProfitable: "výhodné pro přeprodej", cDataDate: "data trhu z {d}", lowData: "málo podobných — odhad je hrubý",
       profitable: "Výhodné", tierQuick: "⚡ Rychle", tierTypical: "● Běžně", tierMax: "⏳ Maximum", listAt: "inzerovat za", daysApprox: "≈{d} dní", howToResell: "Jak přeprodat", netNote: "zisk je čistý, po smlouvání a nákladech ~{c} Kč", liqFast: "prodává se rychle", liqMedium: "prodává se průměrně", liqSlow: "prodává se pomalu", liqBasisSold: "podle {n} prodejů", liqBasisAge: "podle stáří inzerátů", profitNote: "Auta, na kterých i při rychlém prodeji zůstane aspoň {p} Kč čistého po smlouvání a nákladech ~{c} Kč. Jen tam, kde je prodejní cena spočítaná z inzerátů soukromníků nebo skutečných prodejů, bez vážných závad a ne pomalu prodejné modely.", sortYearNew: "Nejnovější", sortYearOld: "Nejstarší", sortSpeed: "Nejrychleji prodejné", sortMargin: "Největší zisk",
       sellerSays: "Prodejce píše", aiTitle: "Kontrola AI z fotek a popisu", aiScore: "vzhled {s}/5", aiOk: "bez výhrad", aiCaution: "má výhrady", aiNoPhotos: "fotky nejsou použitelné", aiPhoto: "foto", rejectedSub: "vyřazeno po kontrole popisů a fotek: {n}",
       defects: {"not_running": "nepojízdné", "parts_or_repair": "na díly nebo na opravu", "engine_failure": "závada motoru", "gearbox_failure": "závada převodovky", "head_gasket": "těsnění pod hlavou", "overheating": "přehřívání", "flood": "po povodni", "crashed": "havarované", "no_papers": "bez dokladů", "finance_only_price": "cena jen při financování", "lease": "leasing nebo pronájem", "coolant_leak": "ztráta chladicí kapaliny", "oil_leak": "únik oleje", "oil_consumption": "spotřeba oleje", "smoke": "kouří", "clutch": "spojka", "flywheel": "dvouhmotový setrvačník", "turbo": "turbo", "dpf": "DPF", "injectors": "vstřikovače", "warning_lights": "svítí kontrolka", "electrical": "elektrika", "suspension_brakes": "podvozek nebo brzdy", "rust": "koroze", "structural_rust": "prorezlá karoserie", "no_stk": "bez STK", "repair_needed": "potřebuje opravu", "mileage_doubt": "nejistý nájezd", "body_cosmetic": "ťukance, škrábance", "glass": "prasklé sklo", "tyres": "nutné pneu", "interior_wear": "opotřebený interiér", "ac": "klimatizace", "accident_damage": "stopy po nehodě", "paint_mismatch": "přelakované díly", "photos_insufficient": "málo nebo špatné fotky", "stock_or_other_car_photos": "fotky jiného auta?", "other": "jiné"},
@@ -652,7 +700,7 @@ footer { color: var(--muted); font-size: 12.5px; }
 
   document.addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
-    if (b.dataset.lang) { lang = b.dataset.lang; store.set("ah-lang", lang); applyStatic(); render(); }
+    if (b.dataset.lang) { lang = b.dataset.lang; store.set("ah-lang", lang); applyStatic(); render(); if (!$("calc-body").hidden) renderCalc(); }
     else if (b.dataset.tab) { state.tab = b.dataset.tab; saveFilters(); render(); }
     else if (b.dataset.msg) { const id = b.dataset.msg; state.openMsg.has(id) ? state.openMsg.delete(id) : state.openMsg.add(id); render(); }
     else if (b.dataset.desc) { const id = b.dataset.desc; state.openDesc.has(id) ? state.openDesc.delete(id) : state.openDesc.add(id); render(); }
@@ -686,6 +734,206 @@ footer { color: var(--muted); font-size: 12.5px; }
       if (!state.deals.length) { note("loadError"); $("list").innerHTML = `<div class="empty">${esc(t("noData"))}</div>`; }
     }
   }
+
+
+  // ---------------------------------------------------------------- calculator ("check a car")
+  let market = null, marketLoad = null;
+  const C = {};
+  const normText = (s) => String(s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/ /g, " ").toLowerCase().replace(/\s+/g, " ");
+  const alnum = (s) => normText(s).replace(/[^a-z0-9]/g, "");
+  const quantile = (vals, q) => {
+    const v = [...vals].sort((a, b) => a - b); if (!v.length) return null;
+    const i = (v.length - 1) * q, lo = Math.floor(i), hi = Math.min(lo + 1, v.length - 1);
+    return v[lo] + (v[hi] - v[lo]) * (i - lo);
+  };
+  const genOf = (y, bounds) => [bounds.filter((b) => y >= b).length, bounds.includes(y)];
+  const TIERS = [
+    ["двигатель", 1, (k) => Math.max(25000, 0.2 * k), 1, 1, 1], ["топливо+КПП", 1, (k) => Math.max(25000, 0.2 * k), 1, 1, 0],
+    ["топливо", 1, (k) => Math.max(35000, 0.3 * k), 1, 0, 0], ["модель", 2, (k) => Math.max(50000, 0.4 * k), 1, 0, 0],
+  ];
+  const NEED_MARKET = { "двигатель": 6, "топливо+КПП": 8, "топливо": 10, "модель": 12 };
+  const NEED5 = { "двигатель": 5, "топливо+КПП": 5, "топливо": 5, "модель": 5 };
+
+  function selectComps(row, pool, bounds, need) {
+    const y = row.year, k = row.km;
+    const [gen, amb] = genOf(y, bounds);
+    const years = amb ? [y - 2, y - 1] : null;
+    const sameGen = (c) => { if (years) return years.includes(c.year); const [cg, ca] = genOf(c.year, bounds); return cg === gen && !ca; };
+    for (const [label, dy, kmw, sf, sg, se] of TIERS) {
+      if (se && !row.engine) continue;
+      const dk = kmw(k);
+      const comps = pool.filter((c) => sameGen(c) && (years || Math.abs(c.year - y) <= dy) && Math.abs(c.km - k) <= dk
+        && (!sf || !row.fuel || c.fuel === row.fuel) && (!sg || !row.gearbox || c.gearbox === row.gearbox)
+        && (!se || c.engine === row.engine) && c.perf === row.perf);
+      if (comps.length >= (need[label] || 99)) {
+        const yr = years ? `${years[0]}–${years[1]}` : `${y - dy}–${y + dy}`;
+        return { comps, basis: `${label}, ${yr}, ±${Math.floor(dk / 1000)} тыс. км` };
+      }
+    }
+    return null;
+  }
+  function withFuelFallback(row, fn) {
+    if (row.fuel) return fn(row);
+    const found = ["b", "n", "h"].map((f) => fn({ ...row, fuel: f })).filter(Boolean);
+    if (!found.length) return null;
+    const best = found.reduce((a, b) => (b.first < a.first ? b : a));
+    return { ...best, basis: best.basis + ", топливо не указано" };
+  }
+  const decode = (r, sold) => ({ year: 2000 + r[0], km: r[1] * 1000, fuel: r[2] || null, gearbox: r[3] || null, engine: r[4] || null, perf: !!r[5],
+    ...(sold ? { price: r[6] * 100, days: r[7] } : { private: !!r[6], price: r[7] * 100 }) });
+
+  function estimate(row) {
+    const m = market.models.find((x) => x.name === row.model);
+    const bounds = m ? m.generations : [];
+    const pool = (market.comps[row.model] || []).map((r) => decode(r, false));
+    const mk = withFuelFallback(row, (r) => {
+      const got = selectComps(r, pool, bounds, NEED_MARKET);
+      if (!got) return null;
+      const v = quantile(got.comps.map((c) => c.price), 0.5);
+      return { first: v, market: v, n: got.comps.length, basis: got.basis };
+    });
+    if (!mk) return null;
+    const cfg = market.cfg;
+    const sold = (market.sold[row.model] || []).map((r) => decode(r, true)).filter((c) => c.days <= cfg.sold_max_days);
+    const privatePool = pool.filter((c) => c.private);
+    const tiers = (src, haggle) => (r) => {
+      const got = selectComps(r, src, bounds, NEED5);
+      if (!got) return null;
+      const p = got.comps.map((c) => c.price);
+      const asks = [quantile(p, 0.25), quantile(p, 0.5), quantile(p, 0.75)];
+      return { first: asks[0], asks, haggle, n: got.comps.length, basis: got.basis };
+    };
+    let kind = "sold", rs = withFuelFallback(row, tiers(sold, [0.97, 0.97, 0.97]));
+    if (!rs) { kind = "private"; rs = withFuelFallback(row, tiers(privatePool, [0.97, 0.95, 0.95])); }
+    let asks, haggle, n = 0;
+    if (rs) {
+      ({ asks, haggle, n } = rs);
+      asks = asks.map((a, i) => Math.min(a, mk.market * cfg.resale_caps[i]));
+      if (n < 8) asks = asks.map((a) => a * 0.97);
+    } else {
+      kind = "estimate"; haggle = [0.95, 0.95, 0.95];
+      asks = [mk.market * 0.86 / 0.95, mk.market * 0.92 / 0.95, mk.market];
+    }
+    asks[1] = Math.max(asks[1], asks[0]); asks[2] = Math.max(asks[2], asks[1]);
+    const gets = asks.map((a, i) => a * haggle[i]);
+    const r100 = (v) => Math.round(v / 100) * 100;
+    const costs = cfg.resale_costs;
+    const d = {
+      market: Math.round(mk.market), comps: mk.n, comps_basis: mk.basis, discount: 1 - row.price / mk.market,
+      resale_basis: kind, resale_n: n, resale_conf: kind === "estimate" || n < 8 ? "low" : "ok", liquidity: liquidityOf(row, bounds),
+    };
+    ["quick", "typical", "max"].forEach((tier, i) => {
+      d["list_" + tier] = r100(asks[i]); d["resale_" + tier] = r100(gets[i]); d["profit_" + tier] = r100(gets[i] - row.price - costs);
+    });
+    return d;
+  }
+  function liquidityOf(row, bounds) {
+    const L = market.liquidity, overall = market.liquidity_overall || {};
+    const [g, amb] = genOf(row.year, bounds);
+    const hit = (!amb && L[`${row.model}|${g}`]) || L[`${row.model}|`];
+    let ratio, out;
+    if (hit) { ratio = overall.sold_median ? hit.days_typical / overall.sold_median : null; out = { ...hit }; }
+    else { const a = L[`${row.model}|age`]; if (!a) return { label: "unknown" }; ratio = a.ratio; out = { basis: "age", n: a.n }; }
+    out.label = ratio == null ? "unknown" : ratio <= 0.8 ? "fast" : ratio >= 1.25 ? "slow" : "medium";
+    return out;
+  }
+
+  function parseAd(text) {
+    const t = normText(text), out = {};
+    const a = t.replace(/[^a-z0-9]/g, "");
+    let best = null;
+    for (const m of market.models) { const tok = alnum(m.token); if (a.includes(tok) && (!best || tok.length > best.tok.length)) best = { name: m.name, tok }; }
+    if (best) out.model = best.name;
+    const now = new Date().getFullYear();
+    let ym = /(?:r\.?\s?v\.?|rok(?: vyroby)?|vyroba|vyrobeno|registrace|1\.\s?reg\w*|uvedeni do provozu|model)\s*:?\s*(?:\d{1,2}\s*[\/.]\s*)?((?:19|20)\d{2})/.exec(t);
+    if (ym && +ym[1] >= 1995 && +ym[1] <= now) out.year = +ym[1];
+    else {
+      const ys = [];
+      for (const m of t.matchAll(/(?<![\d\/.,])((?:199\d|20[0-3]\d))(?![\d.,]*\s*(?:km|kc|,-))/g)) {
+        const before = t.slice(Math.max(0, m.index - 30), m.index);
+        if (+m[1] >= 1995 && +m[1] <= now && !/(dovoz\w*|dovezen\w*|v roce|stk|servis\w*|rozvod\w*|koupen\w*|vymen\w*|platn\w*|od roku|do|od)\W{0,3}(\w+\W{1,3}){0,2}$/.test(before)) ys.push(+m[1]);
+      }
+      if (ys.length) out.year = Math.min(...ys);
+    }
+    const kmVal = (s) => { const dgt = s.replace(/\D/g, ""); const n = /tkm|tis|xxx/.test(s) || dgt.length <= 3 ? +dgt * 1000 : +dgt; return n >= 1000 && n <= 600000 ? n : null; };
+    const km1 = /(?:najeto|najezd|stav (?:tachometru|km)|tachometr|km)\s*:?\s*(?:pouze |jen |cca |realne )?(\d{1,3}(?:[ .]\d{3})+|\d{4,6}|\d{2,3}\s*(?:tkm|tis|xxx))/.exec(t);
+    const km2 = /(\d{1,3}(?:[ .]\d{3})+|\d{4,6})\s*km\b/.exec(t) || /(\d{2,3})\s*(?:tkm|tis\.?\s*km|xxx\s*km)\b/.exec(t);
+    const kmv = (km1 && kmVal(km1[1])) || (km2 && kmVal(km2[0].includes("km") && /tkm|tis|xxx/.test(km2[0]) ? km2[1] + " tkm" : km2[1]));
+    if (kmv) out.km = kmv;
+    const pr = /cena\s*:?\s*(\d{1,3}(?:[ .]\d{3})+|\d{4,7})/.exec(t) || /(\d{1,3}(?:[ .]\d{3})+|\d{4,7})\s*(?:kc|czk|,-)/.exec(t);
+    if (pr) { const v = +pr[1].replace(/\D/g, ""); if (v >= 5000 && v <= 5000000) out.price = v; }
+    if (/hybrid|plug-in|\bphev\b/.test(t)) out.fuel = "h";
+    else if (/elektromobil|\belektro\b|e-golf/.test(t)) out.fuel = "e";
+    else if (/nafta|diesel|(?<![a-z])(tdi|crdi|dci|hdi|tdci|d-4d|cdti|multijet)\b/.test(t)) out.fuel = "n";
+    else if (/benzin|(?<![a-z])(tsi|tfsi|mpi|fsi|gdi|t-gdi|htp|vvt|vvt-i|cvvt|tce)\b|ecoboost/.test(t)) out.fuel = "b";
+    if (/automat|\bdsg\b/.test(t)) out.gearbox = "a"; else if (/manual|manualni|\b[56] ?(st\.|stup|kvalt)/.test(t)) out.gearbox = "m";
+    const en = /(?<![\d.,])([1-4])[.,](\d)(?![\d.,])\s*(?:l\b|tsi|tfsi|tdi|mpi|fsi|crdi|cdti|tdci|t-gdi|gdi|dci|hdi|vvt|ecoboost|d-4d|i\b|t\b|\d{2,3}\s*kw|\s|,|$)/.exec(t);
+    if (en) out.engine = `${en[1]}.${en[2]}`;
+    out.perf = /\b(rs|vrs|st|gti|gtd|r32|cupra)\b(?![- ]?line)|\bgolf r\b|\bi30 n\b/.test(t);
+    return out;
+  }
+
+  function calcRow() {
+    const num = (id) => { const v = parseFloat(String($(id).value).replace(",", ".")); return isNaN(v) ? null : v; };
+    const eng = String($("c-engine").value || "").replace(",", ".").trim();
+    return { model: $("c-model").value, year: num("c-year"), km: num("c-km"), price: num("c-price"),
+             fuel: $("c-fuel").value || null, gearbox: $("c-gear").value || null, engine: /^\d\.\d$/.test(eng) ? eng : null, perf: $("c-perf").checked };
+  }
+  function renderCalc() {
+    const out = $("calc-out");
+    if (!market) { out.innerHTML = `<div class="calc-msg">${esc(t(marketLoad ? "cLoading" : "cNoData"))}</div>`; return; }
+    const sel = $("c-model");
+    if (!sel.options.length || sel.dataset.lang !== lang) {
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">${esc(t("cChoose"))}</option>` + market.models.map((m) => `<option>${esc(m.name)}</option>`).join("");
+      sel.value = cur; sel.dataset.lang = lang;
+    }
+    const row = calcRow();
+    if (!row.model || !row.year || row.km == null || !row.price) { out.innerHTML = `<div class="calc-msg">${esc(t("cNeed"))}</div>`; return; }
+    const d = estimate(row);
+    if (!d) { out.innerHTML = `<div class="calc-msg">${esc(t("cNoComps"))}</div>`; return; }
+    const pct = Math.round(Math.abs(d.discount) * 100);
+    const [vk, cls] = d.discount >= 0.3 ? ["vGreat", "great"] : d.discount >= 0.12 ? ["vGood", "good"] : d.discount >= -0.05 ? ["vFair", "fair"] : ["vHigh", "high"];
+    const signed = (d.discount >= 0 ? "−" : "+") + pct;
+    const chips = [
+      d.profit_quick >= profitMin() && d.resale_basis !== "estimate" ? `<span class="chip good">${esc(t("cProfitable"))}</span>` : "",
+      d.discount > 0.5 ? `<span class="chip warn">⚠ ${esc(t("wCheap"))}</span>` : "",
+    ].join("");
+    out.innerHTML = `<div class="calc-res">
+      <div class="cr-verdict ${cls}">${esc(t(vk, { p: pct, s: signed }))}</div>
+      ${chips ? `<div class="chips">${chips}</div>` : ""}
+      <div class="mkt">${esc(t("marketLine", { m: fmt(d.market), n: d.comps, b: basisText(d.comps_basis) }))}</div>
+      ${resaleBlock(d)}
+      <div class="calc-date">${esc(t("cDataDate", { d: market.generated }))}</div></div>`;
+  }
+  async function loadMarket() {
+    if (market || marketLoad) return;
+    marketLoad = fetch("data/market.json?t=" + Math.floor(Date.now() / 3600000), { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    renderCalc();
+    market = await marketLoad; marketLoad = null;
+    renderCalc();
+  }
+  $("calc-toggle").addEventListener("click", () => {
+    const body = $("calc-body"), open = body.hidden;
+    body.hidden = !open; $("calc-toggle").setAttribute("aria-expanded", String(open));
+    if (open) loadMarket();
+  });
+  ["c-model", "c-year", "c-km", "c-price", "c-fuel", "c-gear", "c-engine", "c-perf"].forEach((id) => {
+    $(id).addEventListener("input", renderCalc); $(id).addEventListener("change", renderCalc);
+  });
+  $("c-paste").addEventListener("input", () => {
+    if (!market) return;
+    const p = parseAd($("c-paste").value);
+    const set = (id, v) => { if (v != null && v !== "") $(id).value = v; };
+    if (p.model) $("c-model").value = p.model;
+    set("c-year", p.year); set("c-km", p.km); set("c-price", p.price); set("c-fuel", p.fuel); set("c-gear", p.gearbox); set("c-engine", p.engine);
+    $("c-perf").checked = !!p.perf;
+    renderCalc();
+  });
+
+  // For checking the calculator against the bot (browser console): avtookhotnik.estimate({...}).
+  window.avtookhotnik = { estimate: (row) => (market ? estimate(row) : null), parseAd: (text) => (market ? parseAd(text) : null), loadMarket };
 
   applyStatic();
   render();

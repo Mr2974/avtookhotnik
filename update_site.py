@@ -109,6 +109,24 @@ def card(d, prefix=""):
             f"<a href=\"{html.escape(d['url'])}\">{html.escape(d['title'][:60])}</a>")
 
 
+def publish_market(max_age_hours=20):
+    """Copies out/market.json (calculator data, ~1 MB) to the site at most about once a day,
+    so the repository does not grow by a megabyte every two hours."""
+    src, dst = "out/market.json", f"{DATA}/market.json"
+    if not os.path.exists(src):
+        return
+    try:
+        old = json.load(open(dst, encoding="utf-8")).get("generated", "")
+        age = dt.datetime.now() - dt.datetime.strptime(old, "%Y-%m-%d %H:%M")
+        if age < dt.timedelta(hours=max_age_hours):
+            return
+    except (OSError, ValueError):
+        pass
+    import shutil
+    shutil.copyfile(src, dst)
+    print("market.json обновлён для калькулятора")
+
+
 def main():
     scan = json.load(open("out/deals.json", encoding="utf-8"))
     stats, found = scan["stats"], scan["deals"]
@@ -160,6 +178,7 @@ def main():
 
     deals = sorted(by_id.values(), key=lambda d: (d.get("live", False), d["score"]), reverse=True)
     os.makedirs(DATA, exist_ok=True)
+    publish_market()
     json.dump({"deals": deals}, open(f"{DATA}/deals.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     meta = dict(stats, new_added=len(new), cheaper=len(cheaper), live=sum(d.get("live", False) for d in deals),
                 total=len(deals), removed_after_check=len(removed), ai=scan.get("ai"),

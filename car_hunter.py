@@ -679,6 +679,36 @@ def liquidity_of(row, table, gens_by_model):
     return out
 
 
+FUEL_CODE = {"benzin": "b", "nafta": "n", "hybrid": "h", "elektro": "e"}
+GEAR_CODE = {"automat": "a", "manual": "m"}
+
+
+def write_market(path, models, comps_by_model, sold_by_model, liquidity, gens, cfg, run_at):
+    """Market data for docs/index.html's calculator: per model, every comparable as
+    [year-2000, km/1000, fuel, gearbox, engine, perf, private, price/100] and every sale as
+    [year-2000, km/1000, fuel, gearbox, engine, perf, price/100, days]. Rounded to keep it small."""
+    def row(c, tail):
+        return [c["year"] - 2000, round(c["km"] / 1000), FUEL_CODE.get(c.get("fuel"), ""), GEAR_CODE.get(c.get("gearbox"), ""),
+                c.get("engine") or "", int(bool(c.get("perf")))] + tail
+
+    liq = {}
+    for key, v in liquidity.items():
+        if key == "_overall":
+            continue
+        liq[f"{key[0]}|{'' if key[1] is None else key[1]}"] = v
+    data = {
+        "generated": run_at,
+        "models": [{"name": m["name"], "token": m["bazos"][1], "generations": gens.get(m["name"], [])} for m in models],
+        "comps": {m: sorted(row(c, [int(bool(c.get("private"))), round(c["price"] / 100)]) for c in v)
+                  for m, v in comps_by_model.items()},
+        "sold": {m: sorted(row(c, [round(c["price"] / 100), c["days"]]) for c in v) for m, v in sold_by_model.items()},
+        "liquidity": liq, "liquidity_overall": liquidity.get("_overall", {}),
+        "cfg": {k: cfg.get(k, d) for k, d in (("resale_costs", 6000), ("resale_caps", [0.92, 1.0, 1.10]),
+                                               ("sold_max_days", 60), ("profit_tab_min", 10000))},
+    }
+    json.dump(data, open(path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+
+
 # ---------------------------------------------------------------- scoring
 
 def score(row, cfg):
@@ -909,6 +939,9 @@ def main():
         "profit_tab_min": cfg.get("profit_tab_min", 10000),
         "rejected_by_description": len(rejected), "pending_unchecked": pending, "checks_version": CHECKS_VERSION,
     }
+    # Compact market data for the site's "check a car" calculator (prices of comparables and sales).
+    write_market(f"{args.out}/market.json", models, comps_by_model, sold_by_model, liquidity, gens, cfg, stats["run_at"])
+
     # Every Sauto listing, for history.py (detects sold cars: ads that disappear).
     cols = ["id", "model", "year", "km", "fuel", "gearbox", "engine", "perf", "private", "created", "price"]
     json.dump({"complete_models": complete_models, "columns": cols,
